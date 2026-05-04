@@ -9,11 +9,7 @@ public class TestController : ControllerBase
     [HttpGet]
     public IActionResult GetAll()
     {
-        var items = new[]
-        {
-            new { Id = 1, Name = "Alice" },
-            new { Id = 2, Name = "Bob" },
-        };
+        var items = new[] { new { Id = 1, Name = "Alice" }, new { Id = 2, Name = "Bob" } };
 
         return Ok(items);
     }

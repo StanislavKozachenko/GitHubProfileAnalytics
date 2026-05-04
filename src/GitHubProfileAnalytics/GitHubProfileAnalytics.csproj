@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -13,5 +12,4 @@
     <Folder Include="Middleware\" />
     <Folder Include="Services\" />
   </ItemGroup>
-
 </Project>
