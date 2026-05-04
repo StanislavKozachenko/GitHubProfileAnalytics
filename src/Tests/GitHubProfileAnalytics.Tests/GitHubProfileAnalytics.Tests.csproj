@@ -16,4 +16,8 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\GitHubProfileAnalytics\GitHubProfileAnalytics.csproj" />
+  </ItemGroup>
 </Project>
