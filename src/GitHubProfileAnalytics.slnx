@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/GitHubProfileAnalytics.Tests/GitHubProfileAnalytics.Tests.csproj" />
+  </Folder>
+  <Project Path="GitHubProfileAnalytics/GitHubProfileAnalytics.csproj" />
+</Solution>
