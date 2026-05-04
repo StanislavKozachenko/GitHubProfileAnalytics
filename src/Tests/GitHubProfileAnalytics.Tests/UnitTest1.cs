@@ -1,4 +1,4 @@
-﻿namespace GitHubProfileAnalytics.Tests;
+namespace GitHubProfileAnalytics.Tests;
 
 public class UnitTest1
 {

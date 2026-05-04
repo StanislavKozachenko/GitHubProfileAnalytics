@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace GitHubProfileAnalytics.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TestController: ControllerBase
+public class TestController : ControllerBase
 {
     [HttpGet]
     public IActionResult GetAll()
@@ -22,10 +22,12 @@ public class TestController: ControllerBase
     public IActionResult GetById(int id)
     {
         if (id <= 0)
+        {
             return BadRequest("Id must be > 0");
-        
-        var item = new {Id = id, Name = $"User #{id}"};
-        
+        }
+
+        var item = new { Id = id, Name = $"User #{id}" };
+
         return Ok(item);
     }
 }
