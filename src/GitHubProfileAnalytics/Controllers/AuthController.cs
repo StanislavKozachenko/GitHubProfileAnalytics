@@ -16,7 +16,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
+    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
         if (result is null)
@@ -24,22 +24,23 @@ public class AuthController : ControllerBase
             return Conflict();
         }
 
-        return Ok(result);
+        return result;
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequest request)
+    public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
         if (result is null)
         {
             return Unauthorized();
         }
-        return Ok(result);
+
+        return result;
     }
 
     [HttpPost("refresh")]
-    public IActionResult Refresh()
+    public ActionResult<AuthResponse> Refresh()
     {
         return StatusCode(501);
     }

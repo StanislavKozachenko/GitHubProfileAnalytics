@@ -5,6 +5,7 @@ using GitHubProfileAnalytics.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Octokit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,7 +32,17 @@ builder
         };
     });
 
-builder.Services.AddRazorPages();
+var gitHubToken = builder.Configuration.GetRequired("GitHub:Token");
+var gitHubClient = new GitHubClient(new ProductHeaderValue("GitHubProfileAnalytics"))
+{
+    Credentials = new Credentials(gitHubToken),
+};
+
+builder.Services.AddSingleton(gitHubClient);
+
+builder.Services.AddScoped<IGitHubService, GitHubService>();
+builder.Services.AddScoped<IProfileCacheService, ProfileCacheService>();
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
@@ -43,7 +54,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Error");
+    app.UseExceptionHandler();
     app.UseHsts();
 }
 
@@ -56,8 +67,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.MapStaticAssets();
-app.MapRazorPages().WithStaticAssets();
 
 app.Run();
