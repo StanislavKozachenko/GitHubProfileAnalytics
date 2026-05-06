@@ -40,7 +40,7 @@ var gitHubClient = new GitHubClient(new ProductHeaderValue("GitHubProfileAnalyti
     Credentials = new Credentials(gitHubToken),
 };
 
-builder.Services.AddSingleton(gitHubClient);
+builder.Services.AddSingleton<IGitHubClient>(gitHubClient);
 
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<IProfileCacheService, ProfileCacheService>();

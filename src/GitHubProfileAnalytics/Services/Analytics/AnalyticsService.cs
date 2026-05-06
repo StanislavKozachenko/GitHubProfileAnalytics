@@ -7,9 +7,9 @@ namespace GitHubProfileAnalytics.Services.Analytics;
 public class AnalyticsService : IAnalyticsService
 {
     private readonly IGitHubService _gitHubService;
-    private readonly GitHubClient _gitHubClient;
+    private readonly IGitHubClient _gitHubClient;
 
-    public AnalyticsService(IGitHubService gitHubService, GitHubClient gitHubClient)
+    public AnalyticsService(IGitHubService gitHubService, IGitHubClient gitHubClient)
     {
         _gitHubService = gitHubService;
         _gitHubClient = gitHubClient;
@@ -71,7 +71,7 @@ public class AnalyticsService : IAnalyticsService
             TotalEvents = events.Count,
             Commits = events
                 .Where(e => e.Type == "PushEvent")
-                .Sum(e => ((PushEventPayload)e.Payload).Commits.Count),
+                .Sum(e => e.Payload is PushEventPayload p ? p.Commits?.Count ?? 0 : 0),
             PullRequests = events.Count(e => e.Type == "PullRequestEvent"),
             Reviews = events.Count(e => e.Type == "PullRequestReviewEvent"),
             Issues = events.Count(e => e.Type == "IssuesEvent"),
