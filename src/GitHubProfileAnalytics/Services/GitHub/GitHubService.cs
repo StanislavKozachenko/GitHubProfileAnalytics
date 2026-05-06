@@ -6,9 +6,9 @@ namespace GitHubProfileAnalytics.Services.GitHub;
 
 public class GitHubService : IGitHubService
 {
-    private readonly GitHubClient _client;
+    private readonly IGitHubClient _client;
 
-    public GitHubService(GitHubClient client)
+    public GitHubService(IGitHubClient client)
     {
         _client = client;
     }
