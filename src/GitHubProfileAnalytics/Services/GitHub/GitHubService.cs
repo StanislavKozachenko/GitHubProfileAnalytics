@@ -1,7 +1,8 @@
-using GitHubProfileAnalytics.DTOs;
+using GitHubProfileAnalytics.DTOs.Auth;
+using GitHubProfileAnalytics.DTOs.GitHub;
 using Octokit;
 
-namespace GitHubProfileAnalytics.Services;
+namespace GitHubProfileAnalytics.Services.GitHub;
 
 public class GitHubService : IGitHubService
 {

@@ -1,4 +1,4 @@
-namespace GitHubProfileAnalytics.DTOs;
+namespace GitHubProfileAnalytics.DTOs.Auth;
 
 public class AuthResponse
 {

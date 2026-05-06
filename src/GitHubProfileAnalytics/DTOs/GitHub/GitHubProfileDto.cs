@@ -1,4 +1,4 @@
-namespace GitHubProfileAnalytics.DTOs;
+namespace GitHubProfileAnalytics.DTOs.GitHub;
 
 public class GitHubProfileDto
 {

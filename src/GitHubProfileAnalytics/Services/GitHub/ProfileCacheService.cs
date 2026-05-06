@@ -1,10 +1,12 @@
 using System.Text.Json;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Domain;
-using GitHubProfileAnalytics.DTOs;
+using GitHubProfileAnalytics.DTOs.Auth;
+using GitHubProfileAnalytics.DTOs.GitHub;
+using GitHubProfileAnalytics.Extensions;
 using Microsoft.EntityFrameworkCore;
 
-namespace GitHubProfileAnalytics.Services;
+namespace GitHubProfileAnalytics.Services.GitHub;
 
 public class ProfileCacheService : IProfileCacheService
 {
@@ -25,8 +27,7 @@ public class ProfileCacheService : IProfileCacheService
 
     public async Task<GitHubProfileDto> GetProfileAsync(string username)
     {
-        var ttlHours = _configuration.GetValue<int>("ProfileCache:TtlHours", 1);
-        var threshold = DateTimeOffset.UtcNow.AddHours(-ttlHours);
+        var threshold = CacheHelper.GetThreshold(_configuration, "ProfileCache:TtlHours");
 
         var cached = await _context.ProfileCaches.FirstOrDefaultAsync(p =>
             p.GitHubUserName == username && p.CachedAt >= threshold
