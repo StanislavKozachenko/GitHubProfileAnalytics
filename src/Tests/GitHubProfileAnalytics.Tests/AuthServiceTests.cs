@@ -21,18 +21,21 @@ public sealed class AuthServiceTests
 
     private static IConfiguration CreateConfiguration() =>
         new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Jwt:Key"] = "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256",
-                ["Jwt:Issuer"] = "test-issuer",
-                ["Jwt:Audience"] = "test-audience",
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["Jwt:Key"] = "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256",
+                    ["Jwt:Issuer"] = "test-issuer",
+                    ["Jwt:Audience"] = "test-audience",
+                }
+            )
             .Build();
 
     private static async Task<User> SeedUser(
         AppDbContext db,
         string email = "user@test.com",
-        string password = "password")
+        string password = "password"
+    )
     {
         var user = new User
         {
@@ -53,7 +56,9 @@ public sealed class AuthServiceTests
         await SeedUser(db, email: "existing@test.com");
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.RegisterAsync(new RegisterRequest { Email = "existing@test.com", Password = "pass" });
+        var result = await sut.RegisterAsync(
+            new RegisterRequest { Email = "existing@test.com", Password = "pass" }
+        );
 
         Assert.Null(result);
     }
@@ -77,7 +82,9 @@ public sealed class AuthServiceTests
         var sut = new AuthService(db, CreateConfiguration());
         const string plainPassword = "mysecretpassword";
 
-        await sut.RegisterAsync(new RegisterRequest { Email = "new@test.com", Password = plainPassword });
+        await sut.RegisterAsync(
+            new RegisterRequest { Email = "new@test.com", Password = plainPassword }
+        );
 
         var storedHash = db.Users.Single().PasswordHash;
         Assert.NotEqual(plainPassword, storedHash);
@@ -90,7 +97,9 @@ public sealed class AuthServiceTests
         var db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.RegisterAsync(new RegisterRequest { Email = "new@test.com", Password = "pass" });
+        var result = await sut.RegisterAsync(
+            new RegisterRequest { Email = "new@test.com", Password = "pass" }
+        );
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.AccessToken);
@@ -102,7 +111,9 @@ public sealed class AuthServiceTests
         var db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.LoginAsync(new LoginRequest { Email = "unknown@test.com", Password = "pass" });
+        var result = await sut.LoginAsync(
+            new LoginRequest { Email = "unknown@test.com", Password = "pass" }
+        );
 
         Assert.Null(result);
     }
@@ -114,7 +125,9 @@ public sealed class AuthServiceTests
         await SeedUser(db, email: "user@test.com", password: "correct");
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.LoginAsync(new LoginRequest { Email = "user@test.com", Password = "wrong" });
+        var result = await sut.LoginAsync(
+            new LoginRequest { Email = "user@test.com", Password = "wrong" }
+        );
 
         Assert.Null(result);
     }
@@ -126,7 +139,9 @@ public sealed class AuthServiceTests
         await SeedUser(db, email: "user@test.com", password: "password");
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.LoginAsync(new LoginRequest { Email = "user@test.com", Password = "password" });
+        var result = await sut.LoginAsync(
+            new LoginRequest { Email = "user@test.com", Password = "password" }
+        );
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.AccessToken);
@@ -139,7 +154,9 @@ public sealed class AuthServiceTests
         var sut = new AuthService(db, CreateConfiguration());
         const string email = "user@test.com";
 
-        var result = await sut.RegisterAsync(new RegisterRequest { Email = email, Password = "pass" });
+        var result = await sut.RegisterAsync(
+            new RegisterRequest { Email = email, Password = "pass" }
+        );
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result!.AccessToken);
         Assert.Contains(jwt.Claims, c => c.Type == ClaimTypes.Email && c.Value == email);
@@ -151,7 +168,9 @@ public sealed class AuthServiceTests
         var db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.RegisterAsync(new RegisterRequest { Email = "user@test.com", Password = "pass" });
+        var result = await sut.RegisterAsync(
+            new RegisterRequest { Email = "user@test.com", Password = "pass" }
+        );
 
         var userId = db.Users.Single().Id.ToString();
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result!.AccessToken);

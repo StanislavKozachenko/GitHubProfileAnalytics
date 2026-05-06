@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Domain;
 using GitHubProfileAnalytics.DTOs.Analytics;
@@ -24,7 +24,10 @@ public sealed class AnalyticsCacheServiceTests
     {
         return new ConfigurationBuilder()
             .AddInMemoryCollection(
-                new Dictionary<string, string?> { ["AnalyticsCache:TtlHours"] = ttlHours.ToString() }
+                new Dictionary<string, string?>
+                {
+                    ["AnalyticsCache:TtlHours"] = ttlHours.ToString(),
+                }
             )
             .Build();
     }
@@ -62,9 +65,7 @@ public sealed class AnalyticsCacheServiceTests
         var analyticsService = Substitute.For<IAnalyticsService>();
         var config = CreateConfiguration();
 
-        analyticsService
-            .GetAnalyticsAsync("testuser")
-            .Returns(new GitHubAnalyticsDto());
+        analyticsService.GetAnalyticsAsync("testuser").Returns(new GitHubAnalyticsDto());
 
         var sut = new AnalyticsCacheService(db, analyticsService, config);
 
@@ -92,9 +93,7 @@ public sealed class AnalyticsCacheServiceTests
         db.AnalyticsCaches.Add(expired);
         await db.SaveChangesAsync();
 
-        analyticsService
-            .GetAnalyticsAsync("testuser")
-            .Returns(new GitHubAnalyticsDto());
+        analyticsService.GetAnalyticsAsync("testuser").Returns(new GitHubAnalyticsDto());
 
         var sut = new AnalyticsCacheService(db, analyticsService, config);
 
@@ -124,9 +123,7 @@ public sealed class AnalyticsCacheServiceTests
 
         var oldCachedAt = expired.CachedAt;
 
-        analyticsService
-            .GetAnalyticsAsync("testuser")
-            .Returns(new GitHubAnalyticsDto());
+        analyticsService.GetAnalyticsAsync("testuser").Returns(new GitHubAnalyticsDto());
 
         var sut = new AnalyticsCacheService(db, analyticsService, config);
 
@@ -156,6 +153,8 @@ public sealed class AnalyticsCacheServiceTests
 
         var sut = new AnalyticsCacheService(db, analyticsService, config);
 
-        await Assert.ThrowsAsync<JsonException>(async () => await sut.GetAnalyticsAsync("testuser"));
+        await Assert.ThrowsAsync<JsonException>(async () =>
+            await sut.GetAnalyticsAsync("testuser")
+        );
     }
 }

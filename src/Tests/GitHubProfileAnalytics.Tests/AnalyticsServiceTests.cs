@@ -12,14 +12,19 @@ public sealed class AnalyticsServiceTests
     private static AnalyticsService CreateSut(
         GitHubProfileDto profile,
         List<Repository> repos,
-        List<Activity> events)
+        List<Activity> events
+    )
     {
         var gitHubService = Substitute.For<IGitHubService>();
         gitHubService.GetProfileAsync(Arg.Any<string>()).Returns(profile);
 
         var gitHubClient = Substitute.For<IGitHubClient>();
-        gitHubClient.Repository.GetAllForUser(Arg.Any<string>()).Returns((IReadOnlyList<Repository>)repos);
-        gitHubClient.Activity.Events.GetAllUserPerformed(Arg.Any<string>()).Returns((IReadOnlyList<Activity>)events);
+        gitHubClient
+            .Repository.GetAllForUser(Arg.Any<string>())
+            .Returns((IReadOnlyList<Repository>)repos);
+        gitHubClient
+            .Activity.Events.GetAllUserPerformed(Arg.Any<string>())
+            .Returns((IReadOnlyList<Activity>)events);
 
         return new AnalyticsService(gitHubService, gitHubClient);
     }
@@ -48,7 +53,8 @@ public sealed class AnalyticsServiceTests
             .Select(_ => (Commit)RuntimeHelpers.GetUninitializedObject(typeof(Commit)))
             .ToList();
 
-        var payload = (PushEventPayload)RuntimeHelpers.GetUninitializedObject(typeof(PushEventPayload));
+        var payload = (PushEventPayload)
+            RuntimeHelpers.GetUninitializedObject(typeof(PushEventPayload));
         Set(payload, "Commits", (IReadOnlyList<Commit>)commits);
 
         var activity = (Activity)RuntimeHelpers.GetUninitializedObject(typeof(Activity));
@@ -65,7 +71,8 @@ public sealed class AnalyticsServiceTests
         int followers = 0,
         int following = 0,
         int publicRepos = 0,
-        DateTimeOffset? createdAt = null) =>
+        DateTimeOffset? createdAt = null
+    ) =>
         new()
         {
             Followers = followers,
@@ -89,7 +96,11 @@ public sealed class AnalyticsServiceTests
     [InlineData(10, 5, 2.0)]
     [InlineData(0, 5, 0.0)]
     [InlineData(7, 3, 2.33)]
-    public async Task CalculatesFollowerRatioCorrectly(int followers, int following, double expected)
+    public async Task CalculatesFollowerRatioCorrectly(
+        int followers,
+        int following,
+        double expected
+    )
     {
         var sut = CreateSut(CreateProfile(followers: followers, following: following), [], []);
 
@@ -125,7 +136,12 @@ public sealed class AnalyticsServiceTests
     [Fact]
     public async Task CalculatesTotalStarsCorrectly()
     {
-        var repos = new List<Repository> { CreateRepo(stars: 3), CreateRepo(stars: 5), CreateRepo(stars: 2) };
+        var repos = new List<Repository>
+        {
+            CreateRepo(stars: 3),
+            CreateRepo(stars: 5),
+            CreateRepo(stars: 2),
+        };
         var sut = CreateSut(CreateProfile(), repos, []);
 
         var result = await sut.GetAnalyticsAsync("user");
@@ -136,7 +152,12 @@ public sealed class AnalyticsServiceTests
     [Fact]
     public async Task CalculatesTotalForksCorrectly()
     {
-        var repos = new List<Repository> { CreateRepo(forks: 1), CreateRepo(forks: 4), CreateRepo(forks: 2) };
+        var repos = new List<Repository>
+        {
+            CreateRepo(forks: 1),
+            CreateRepo(forks: 4),
+            CreateRepo(forks: 2),
+        };
         var sut = CreateSut(CreateProfile(), repos, []);
 
         var result = await sut.GetAnalyticsAsync("user");
@@ -147,7 +168,12 @@ public sealed class AnalyticsServiceTests
     [Fact]
     public async Task CalculatesAverageStarsPerRepoCorrectly()
     {
-        var repos = new List<Repository> { CreateRepo(stars: 3), CreateRepo(stars: 5), CreateRepo(stars: 4) };
+        var repos = new List<Repository>
+        {
+            CreateRepo(stars: 3),
+            CreateRepo(stars: 5),
+            CreateRepo(stars: 4),
+        };
         var sut = CreateSut(CreateProfile(), repos, []);
 
         var result = await sut.GetAnalyticsAsync("user");

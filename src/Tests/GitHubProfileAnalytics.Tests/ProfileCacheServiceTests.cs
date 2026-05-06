@@ -126,7 +126,7 @@ public sealed class ProfileCacheServiceTests
 
         gitHubService
             .GetProfileAsync("testuser")
-            .Returns(new  GitHubProfileDto { Login = "testuser" });
+            .Returns(new GitHubProfileDto { Login = "testuser" });
 
         var sut = new ProfileCacheService(db, gitHubService, config);
 
