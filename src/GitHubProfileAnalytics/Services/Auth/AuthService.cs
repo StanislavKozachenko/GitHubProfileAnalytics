@@ -3,12 +3,13 @@ using System.Security.Claims;
 using System.Text;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Domain;
-using GitHubProfileAnalytics.DTOs;
+using GitHubProfileAnalytics.DTOs.Auth;
+using GitHubProfileAnalytics.DTOs.GitHub;
 using GitHubProfileAnalytics.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-namespace GitHubProfileAnalytics.Services;
+namespace GitHubProfileAnalytics.Services.Auth;
 
 public class AuthService : IAuthService
 {

@@ -1,8 +1,11 @@
 using System.Security.Claims;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Domain;
-using GitHubProfileAnalytics.DTOs;
-using GitHubProfileAnalytics.Services;
+using GitHubProfileAnalytics.DTOs.Auth;
+using GitHubProfileAnalytics.DTOs.GitHub;
+using GitHubProfileAnalytics.Services.Analytics;
+using GitHubProfileAnalytics.Services.Auth;
+using GitHubProfileAnalytics.Services.GitHub;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Octokit;
