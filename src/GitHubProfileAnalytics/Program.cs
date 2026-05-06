@@ -1,7 +1,9 @@
 using System.Text;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Extensions;
-using GitHubProfileAnalytics.Services;
+using GitHubProfileAnalytics.Services.Analytics;
+using GitHubProfileAnalytics.Services.Auth;
+using GitHubProfileAnalytics.Services.GitHub;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -42,6 +44,8 @@ builder.Services.AddSingleton(gitHubClient);
 
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<IProfileCacheService, ProfileCacheService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IAnalyticsCacheService, AnalyticsCacheService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
