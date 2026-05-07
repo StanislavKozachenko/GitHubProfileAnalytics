@@ -9,6 +9,7 @@ using GitHubProfileAnalytics.Services.Analytics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
@@ -26,6 +27,21 @@ public sealed class AnalyticsControllerTests
     private readonly WebApplicationFactory<Program> _factory =
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                {
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Jwt:Key"] = JwtKey,
+                            ["Jwt:Issuer"] = JwtIssuer,
+                            ["Jwt:Audience"] = JwtAudience,
+                            ["GitHub:Token"] = "test-token",
+                        }
+                    );
+                }
+            );
+
             builder.ConfigureServices(services =>
             {
                 var dbDescriptor = services.SingleOrDefault(d =>
