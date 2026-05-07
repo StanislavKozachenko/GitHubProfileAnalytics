@@ -1,0 +1,12 @@
+{
+  "stryker-config": {
+    "mutation-level": "Standard",
+    "mutate": [
+      "!**/Migrations/**",
+      "!**/Domain/**",
+      "!**/DTOs/**",
+      "!**/Program.cs",
+      "!**/Data/AppDbContextFactory.cs"
+    ]
+  }
+}
