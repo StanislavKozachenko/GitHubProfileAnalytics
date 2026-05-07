@@ -61,7 +61,12 @@ public sealed class ProfileCacheServiceTests
         var db = CreateDbContext();
         var gitHubService = Substitute.For<IGitHubService>();
         var config = CreateConfiguration();
-        var profile = new GitHubProfileDto { Login = "testuser", Name = "Test User", Followers = 7 };
+        var profile = new GitHubProfileDto
+        {
+            Login = "testuser",
+            Name = "Test User",
+            Followers = 7,
+        };
 
         gitHubService.GetProfileAsync("testuser").Returns(profile);
 
@@ -180,8 +185,8 @@ public sealed class ProfileCacheServiceTests
 
         var sut = new ProfileCacheService(db, gitHubService, config);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => sut.GetProfileAsync("testuser")
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.GetProfileAsync("testuser")
         );
         Assert.Contains("testuser", ex.Message);
     }
@@ -235,7 +240,9 @@ public sealed class ProfileCacheServiceTests
             {
                 Id = Guid.NewGuid(),
                 GitHubUserName = "testuser",
-                Data = JsonSerializer.Serialize(new GitHubProfileDto { Login = "testuser", Name = "Cached" }),
+                Data = JsonSerializer.Serialize(
+                    new GitHubProfileDto { Login = "testuser", Name = "Cached" }
+                ),
                 CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
             }
         );

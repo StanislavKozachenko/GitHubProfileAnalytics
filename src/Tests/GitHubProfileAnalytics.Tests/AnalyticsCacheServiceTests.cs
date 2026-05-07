@@ -179,8 +179,8 @@ public sealed class AnalyticsCacheServiceTests
 
         var sut = new AnalyticsCacheService(db, analyticsService, CreateConfiguration());
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => sut.GetAnalyticsAsync("testuser")
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.GetAnalyticsAsync("testuser")
         );
         Assert.Contains("testuser", ex.Message);
     }
@@ -203,7 +203,11 @@ public sealed class AnalyticsCacheServiceTests
         await db.SaveChangesAsync();
 
         // TTL=24h → 2h-old entry is fresh → no service call
-        var sut = new AnalyticsCacheService(db, analyticsService, CreateConfiguration(ttlHours: 24));
+        var sut = new AnalyticsCacheService(
+            db,
+            analyticsService,
+            CreateConfiguration(ttlHours: 24)
+        );
         await sut.GetAnalyticsAsync("testuser");
 
         await analyticsService.DidNotReceive().GetAnalyticsAsync(Arg.Any<string>());

@@ -73,7 +73,9 @@ public class GitHubServiceTests
     public async Task GetProfileAsyncPropagatesNotFoundException()
     {
         var usersClient = Substitute.For<IUsersClient>();
-        usersClient.Get("unknown").Throws(new NotFoundException("Not found", System.Net.HttpStatusCode.NotFound));
+        usersClient
+            .Get("unknown")
+            .Throws(new NotFoundException("Not found", System.Net.HttpStatusCode.NotFound));
 
         var client = Substitute.For<IGitHubClient>();
         client.User.Returns(usersClient);
