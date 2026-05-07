@@ -34,7 +34,9 @@ jobs:
         run: dotnet build --no-restore -warnaserror
 
       - name: Code style check by dotnet format
-        run: dotnet format --verify-no-changes
+        run: |
+          dotnet format GitHubProfileAnalytics/GitHubProfileAnalytics.csproj --verify-no-changes
+          dotnet format Tests/GitHubProfileAnalytics.Tests/GitHubProfileAnalytics.Tests.csproj --verify-no-changes
 
       - name: Install csharpier
         run: dotnet tool install -g csharpier
