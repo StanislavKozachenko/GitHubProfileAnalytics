@@ -35,13 +35,14 @@ builder
         };
     });
 
-var gitHubToken = builder.Configuration.GetRequired("GitHub:Token");
-var gitHubClient = new GitHubClient(new ProductHeaderValue("GitHubProfileAnalytics"))
+builder.Services.AddSingleton<IGitHubClient>(sp =>
 {
-    Credentials = new Credentials(gitHubToken),
-};
-
-builder.Services.AddSingleton<IGitHubClient>(gitHubClient);
+    var token = sp.GetRequiredService<IConfiguration>().GetRequired("GitHub:Token");
+    return new GitHubClient(new ProductHeaderValue("GitHubProfileAnalytics"))
+    {
+        Credentials = new Credentials(token),
+    };
+});
 
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<IProfileCacheService, ProfileCacheService>();
