@@ -1,5 +1,6 @@
 using System.Text;
 using GitHubProfileAnalytics.Data;
+using GitHubProfileAnalytics.Exceptions;
 using GitHubProfileAnalytics.Extensions;
 using GitHubProfileAnalytics.Services.Analytics;
 using GitHubProfileAnalytics.Services.Auth;
@@ -47,10 +48,16 @@ builder.Services.AddScoped<IProfileCacheService, ProfileCacheService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IAnalyticsCacheService, AnalyticsCacheService>();
 
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
@@ -58,7 +65,6 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler();
     app.UseHsts();
 }
 
