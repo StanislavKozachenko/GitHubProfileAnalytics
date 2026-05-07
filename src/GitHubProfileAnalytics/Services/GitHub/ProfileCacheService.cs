@@ -1,7 +1,6 @@
 using System.Text.Json;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Domain;
-using GitHubProfileAnalytics.DTOs.Auth;
 using GitHubProfileAnalytics.DTOs.GitHub;
 using GitHubProfileAnalytics.Extensions;
 using Microsoft.EntityFrameworkCore;
