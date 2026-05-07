@@ -4,20 +4,12 @@ using Octokit;
 
 namespace GitHubProfileAnalytics.Services.Analytics;
 
-public class AnalyticsService : IAnalyticsService
+public class AnalyticsService(IGitHubService gitHubService, IGitHubClient gitHubClient)
+    : IAnalyticsService
 {
-    private readonly IGitHubService _gitHubService;
-    private readonly IGitHubClient _gitHubClient;
-
-    public AnalyticsService(IGitHubService gitHubService, IGitHubClient gitHubClient)
-    {
-        _gitHubService = gitHubService;
-        _gitHubClient = gitHubClient;
-    }
-
     public async Task<GitHubAnalyticsDto> GetAnalyticsAsync(string username)
     {
-        var profile = await _gitHubService.GetProfileAsync(username);
+        var profile = await gitHubService.GetProfileAsync(username);
 
         var accountAgeDays = (int)(DateTimeOffset.UtcNow - profile.CreatedAt).TotalDays;
 
@@ -38,7 +30,7 @@ public class AnalyticsService : IAnalyticsService
             ReposPerYear = reposPerYear,
         };
 
-        var repos = await _gitHubClient.Repository.GetAllForUser(username);
+        var repos = await gitHubClient.Repository.GetAllForUser(username);
 
         var totalStars = repos.Sum(r => r.StargazersCount);
         var totalForks = repos.Sum(r => r.ForksCount);
@@ -64,7 +56,7 @@ public class AnalyticsService : IAnalyticsService
             TopLanguages = languages,
         };
 
-        var events = await _gitHubClient.Activity.Events.GetAllUserPerformed(username);
+        var events = await gitHubClient.Activity.Events.GetAllUserPerformed(username);
 
         var activityMetrics = new ActivityMetrics
         {

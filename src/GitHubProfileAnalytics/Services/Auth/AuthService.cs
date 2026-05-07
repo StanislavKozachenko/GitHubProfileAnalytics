@@ -11,20 +11,11 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace GitHubProfileAnalytics.Services.Auth;
 
-public class AuthService : IAuthService
+public class AuthService(AppDbContext context, IConfiguration configuration) : IAuthService
 {
-    private readonly AppDbContext _context;
-    private readonly IConfiguration _configuration;
-
-    public AuthService(AppDbContext context, IConfiguration configuration)
-    {
-        _context = context;
-        _configuration = configuration;
-    }
-
     public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)
     {
-        var exists = await _context.Users.AnyAsync(u => u.Email == request.Email);
+        var exists = await context.Users.AnyAsync(u => u.Email == request.Email);
         if (exists)
         {
             return null;
@@ -38,15 +29,15 @@ public class AuthService : IAuthService
             CreatedAt = DateTimeOffset.UtcNow,
         };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
 
         return GenerateAccessToken(user);
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
         if (user is null)
         {
             return null;
@@ -62,9 +53,9 @@ public class AuthService : IAuthService
 
     private AuthResponse GenerateAccessToken(User user)
     {
-        var jwtKey = _configuration.GetRequired("Jwt:Key");
-        var issuer = _configuration.GetRequired("Jwt:Issuer");
-        var audience = _configuration.GetRequired("Jwt:Audience");
+        var jwtKey = configuration.GetRequired("Jwt:Key");
+        var issuer = configuration.GetRequired("Jwt:Issuer");
+        var audience = configuration.GetRequired("Jwt:Audience");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 

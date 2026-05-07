@@ -8,19 +8,12 @@ namespace GitHubProfileAnalytics.Controllers;
 [ApiController]
 [Route("api/analytics")]
 [Authorize]
-public class AnalyticsController : ControllerBase
+public class AnalyticsController(IAnalyticsCacheService cacheService) : ControllerBase
 {
-    private readonly IAnalyticsCacheService _cacheService;
-
-    public AnalyticsController(IAnalyticsCacheService cacheService)
-    {
-        _cacheService = cacheService;
-    }
-
     [HttpGet("{username}")]
     public async Task<ActionResult<GitHubAnalyticsDto>> GetAnalytics(string username)
     {
-        var analytics = await _cacheService.GetAnalyticsAsync(username);
+        var analytics = await cacheService.GetAnalyticsAsync(username);
         return analytics;
     }
 }

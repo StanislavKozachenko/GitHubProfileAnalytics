@@ -9,19 +9,12 @@ namespace GitHubProfileAnalytics.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController : ControllerBase
+public class AuthController(IAuthService authService) : ControllerBase
 {
-    private readonly IAuthService _authService;
-
-    public AuthController(IAuthService authService)
-    {
-        _authService = authService;
-    }
-
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
-        var result = await _authService.RegisterAsync(request);
+        var result = await authService.RegisterAsync(request);
         if (result is null)
         {
             return Conflict();
@@ -33,7 +26,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
-        var result = await _authService.LoginAsync(request);
+        var result = await authService.LoginAsync(request);
         if (result is null)
         {
             return Unauthorized();
