@@ -134,6 +134,20 @@ public sealed class AnalyticsServiceTests
     }
 
     [Fact]
+    public async Task ReturnsZeroReposPerYearWhenAccountAgeIsZero()
+    {
+        var sut = CreateSut(
+            CreateProfile(publicRepos: 10, createdAt: DateTimeOffset.UtcNow),
+            [],
+            []
+        );
+
+        var result = await sut.GetAnalyticsAsync("user");
+
+        Assert.Equal(0, result.Profile.ReposPerYear);
+    }
+
+    [Fact]
     public async Task CalculatesTotalStarsCorrectly()
     {
         var repos = new List<Repository>

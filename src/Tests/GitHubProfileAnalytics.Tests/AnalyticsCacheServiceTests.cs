@@ -64,15 +64,17 @@ public sealed class AnalyticsCacheServiceTests
         var db = CreateDbContext();
         var analyticsService = Substitute.For<IAnalyticsService>();
         var config = CreateConfiguration();
+        var analytics = new GitHubAnalyticsDto();
 
-        analyticsService.GetAnalyticsAsync("testuser").Returns(new GitHubAnalyticsDto());
+        analyticsService.GetAnalyticsAsync("testuser").Returns(analytics);
 
         var sut = new AnalyticsCacheService(db, analyticsService, config);
 
-        var result = await sut.GetAnalyticsAsync("testuser");
+        await sut.GetAnalyticsAsync("testuser");
 
-        Assert.NotNull(result);
-        Assert.Single(db.AnalyticsCaches);
+        var entry = db.AnalyticsCaches.Single();
+        Assert.Equal("testuser", entry.GitHubUserName);
+        Assert.Equal(JsonSerializer.Serialize(analytics), entry.Data);
     }
 
     [Fact]
@@ -156,5 +158,58 @@ public sealed class AnalyticsCacheServiceTests
         await Assert.ThrowsAsync<JsonException>(async () =>
             await sut.GetAnalyticsAsync("testuser")
         );
+    }
+
+    [Fact]
+    public async Task ThrowsInvalidOperationWithUsernameWhenDeserializesNull()
+    {
+        var db = CreateDbContext();
+        var analyticsService = Substitute.For<IAnalyticsService>();
+
+        db.AnalyticsCaches.Add(
+            new AnalyticsCache
+            {
+                Id = Guid.NewGuid(),
+                GitHubUserName = "testuser",
+                Data = "null",
+                CachedAt = DateTimeOffset.UtcNow,
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var sut = new AnalyticsCacheService(db, analyticsService, CreateConfiguration());
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.GetAnalyticsAsync("testuser")
+        );
+        Assert.Contains("testuser", ex.Message);
+    }
+
+    [Fact]
+    public async Task UsesTtlKeyFromConfigurationForFreshnessCheck()
+    {
+        var db = CreateDbContext();
+        var analyticsService = Substitute.For<IAnalyticsService>();
+
+        db.AnalyticsCaches.Add(
+            new AnalyticsCache
+            {
+                Id = Guid.NewGuid(),
+                GitHubUserName = "testuser",
+                Data = JsonSerializer.Serialize(new GitHubAnalyticsDto()),
+                CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
+            }
+        );
+        await db.SaveChangesAsync();
+
+        // TTL=24h → 2h-old entry is fresh → no service call
+        var sut = new AnalyticsCacheService(
+            db,
+            analyticsService,
+            CreateConfiguration(ttlHours: 24)
+        );
+        await sut.GetAnalyticsAsync("testuser");
+
+        await analyticsService.DidNotReceive().GetAnalyticsAsync(Arg.Any<string>());
     }
 }

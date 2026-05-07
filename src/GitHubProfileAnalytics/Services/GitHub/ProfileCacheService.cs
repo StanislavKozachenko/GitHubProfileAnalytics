@@ -1,35 +1,23 @@
 using System.Text.Json;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Domain;
-using GitHubProfileAnalytics.DTOs.Auth;
 using GitHubProfileAnalytics.DTOs.GitHub;
 using GitHubProfileAnalytics.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace GitHubProfileAnalytics.Services.GitHub;
 
-public class ProfileCacheService : IProfileCacheService
+public class ProfileCacheService(
+    AppDbContext context,
+    IGitHubService gitHubService,
+    IConfiguration configuration
+) : IProfileCacheService
 {
-    private readonly AppDbContext _context;
-    private readonly IGitHubService _gitHubService;
-    private readonly IConfiguration _configuration;
-
-    public ProfileCacheService(
-        AppDbContext context,
-        IGitHubService gitHubService,
-        IConfiguration configuration
-    )
-    {
-        _context = context;
-        _gitHubService = gitHubService;
-        _configuration = configuration;
-    }
-
     public async Task<GitHubProfileDto> GetProfileAsync(string username)
     {
-        var threshold = CacheHelper.GetThreshold(_configuration, "ProfileCache:TtlHours");
+        var threshold = CacheHelper.GetThreshold(configuration, "ProfileCache:TtlHours");
 
-        var cached = await _context.ProfileCaches.FirstOrDefaultAsync(p =>
+        var cached = await context.ProfileCaches.FirstOrDefaultAsync(p =>
             p.GitHubUserName == username && p.CachedAt >= threshold
         );
 
@@ -41,15 +29,15 @@ public class ProfileCacheService : IProfileCacheService
                 );
         }
 
-        var profile = await _gitHubService.GetProfileAsync(username);
+        var profile = await gitHubService.GetProfileAsync(username);
 
-        var entry = await _context.ProfileCaches.FirstOrDefaultAsync(p =>
+        var entry = await context.ProfileCaches.FirstOrDefaultAsync(p =>
             p.GitHubUserName == username
         );
 
         if (entry is null)
         {
-            _context.ProfileCaches.Add(
+            context.ProfileCaches.Add(
                 new ProfileCache
                 {
                     Id = Guid.NewGuid(),
@@ -65,7 +53,7 @@ public class ProfileCacheService : IProfileCacheService
             entry.CachedAt = DateTimeOffset.UtcNow;
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return profile;
     }
 }

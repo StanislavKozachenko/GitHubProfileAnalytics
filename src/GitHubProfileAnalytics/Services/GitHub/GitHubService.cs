@@ -4,18 +4,11 @@ using Octokit;
 
 namespace GitHubProfileAnalytics.Services.GitHub;
 
-public class GitHubService : IGitHubService
+public class GitHubService(IGitHubClient client) : IGitHubService
 {
-    private readonly IGitHubClient _client;
-
-    public GitHubService(IGitHubClient client)
-    {
-        _client = client;
-    }
-
     public async Task<GitHubProfileDto> GetProfileAsync(string username)
     {
-        var user = await _client.User.Get(username);
+        var user = await client.User.Get(username);
 
         return new GitHubProfileDto
         {

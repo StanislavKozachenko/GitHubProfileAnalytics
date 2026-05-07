@@ -61,17 +61,23 @@ public sealed class ProfileCacheServiceTests
         var db = CreateDbContext();
         var gitHubService = Substitute.For<IGitHubService>();
         var config = CreateConfiguration();
+        var profile = new GitHubProfileDto
+        {
+            Login = "testuser",
+            Name = "Test User",
+            Followers = 7,
+        };
 
-        gitHubService
-            .GetProfileAsync("testuser")
-            .Returns(new GitHubProfileDto { Login = "testuser" });
+        gitHubService.GetProfileAsync("testuser").Returns(profile);
 
         var sut = new ProfileCacheService(db, gitHubService, config);
 
         var result = await sut.GetProfileAsync("testuser");
 
         Assert.Equal("testuser", result.Login);
-        Assert.Single(db.ProfileCaches);
+        var entry = db.ProfileCaches.Single();
+        Assert.Equal("testuser", entry.GitHubUserName);
+        Assert.Equal(JsonSerializer.Serialize(profile), entry.Data);
     }
 
     [Fact]
@@ -157,5 +163,96 @@ public sealed class ProfileCacheServiceTests
         var sut = new ProfileCacheService(db, gitHubService, config);
 
         await Assert.ThrowsAsync<JsonException>(async () => await sut.GetProfileAsync("testuser"));
+    }
+
+    [Fact]
+    public async Task ThrowsInvalidOperationWithUsernameWhenDeserializesNull()
+    {
+        var db = CreateDbContext();
+        var gitHubService = Substitute.For<IGitHubService>();
+        var config = CreateConfiguration();
+
+        db.ProfileCaches.Add(
+            new ProfileCache
+            {
+                Id = Guid.NewGuid(),
+                GitHubUserName = "testuser",
+                Data = "null",
+                CachedAt = DateTimeOffset.UtcNow,
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var sut = new ProfileCacheService(db, gitHubService, config);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.GetProfileAsync("testuser")
+        );
+        Assert.Contains("testuser", ex.Message);
+    }
+
+    [Fact]
+    public async Task ReturnsCachedDataWithAllFieldsMapped()
+    {
+        var db = CreateDbContext();
+        var gitHubService = Substitute.For<IGitHubService>();
+        var config = CreateConfiguration();
+
+        var profile = new GitHubProfileDto
+        {
+            Login = "testuser",
+            Name = "Test User",
+            Followers = 100,
+            Following = 50,
+            PublicRepos = 10,
+        };
+
+        db.ProfileCaches.Add(
+            new ProfileCache
+            {
+                Id = Guid.NewGuid(),
+                GitHubUserName = "testuser",
+                Data = JsonSerializer.Serialize(profile),
+                CachedAt = DateTimeOffset.UtcNow,
+            }
+        );
+        await db.SaveChangesAsync();
+
+        var sut = new ProfileCacheService(db, gitHubService, config);
+
+        var result = await sut.GetProfileAsync("testuser");
+
+        Assert.Equal("Test User", result.Name);
+        Assert.Equal(100, result.Followers);
+        Assert.Equal(50, result.Following);
+        Assert.Equal(10, result.PublicRepos);
+    }
+
+    [Fact]
+    public async Task UsesTtlKeyFromConfigurationForFreshnessCheck()
+    {
+        var db = CreateDbContext();
+        var gitHubService = Substitute.For<IGitHubService>();
+
+        // Entry is 2h old — fresh only if TTL >= 2h
+        db.ProfileCaches.Add(
+            new ProfileCache
+            {
+                Id = Guid.NewGuid(),
+                GitHubUserName = "testuser",
+                Data = JsonSerializer.Serialize(
+                    new GitHubProfileDto { Login = "testuser", Name = "Cached" }
+                ),
+                CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
+            }
+        );
+        await db.SaveChangesAsync();
+
+        // TTL=24h → entry is fresh → no API call
+        var sut = new ProfileCacheService(db, gitHubService, CreateConfiguration(ttlHours: 24));
+        var result = await sut.GetProfileAsync("testuser");
+
+        Assert.Equal("Cached", result.Name);
+        await gitHubService.DidNotReceive().GetProfileAsync(Arg.Any<string>());
     }
 }
