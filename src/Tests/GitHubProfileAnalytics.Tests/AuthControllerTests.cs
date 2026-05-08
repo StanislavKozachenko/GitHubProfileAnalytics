@@ -64,8 +64,9 @@ public sealed class AuthControllerTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var content = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(content?.AccessToken);
+        Assert.NotNull(content);
         Assert.NotEmpty(content.AccessToken);
+        Assert.NotEmpty(content.RefreshToken);
     }
 
     [Fact]
@@ -103,8 +104,9 @@ public sealed class AuthControllerTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var content = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(content?.AccessToken);
+        Assert.NotNull(content);
         Assert.NotEmpty(content.AccessToken);
+        Assert.NotEmpty(content.RefreshToken);
     }
 
     [Fact]
@@ -144,15 +146,63 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshReturns501()
+    public async Task RefreshWithValidTokenReturns200WithNewTokenPair()
+    {
+        var client = _factory.CreateClient();
+
+        var registerResponse = await client.PostAsync(
+            "/api/auth/register",
+            JsonContent.Create(new { Email = "test@test.com", Password = "password" })
+        );
+        var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
+
+        var response = await client.PostAsync(
+            "/api/auth/refresh",
+            JsonContent.Create(new { RefreshToken = auth!.RefreshToken })
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
+        Assert.NotEqual(auth.RefreshToken, result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshWithUnknownTokenReturns401()
     {
         var client = _factory.CreateClient();
 
         var response = await client.PostAsync(
             "/api/auth/refresh",
-            JsonContent.Create(new { Email = "test@test.com", Password = "password" })
+            JsonContent.Create(new { RefreshToken = "nonexistent-token" })
         );
 
-        Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RefreshWithAlreadyUsedTokenReturns401()
+    {
+        var client = _factory.CreateClient();
+
+        var registerResponse = await client.PostAsync(
+            "/api/auth/register",
+            JsonContent.Create(new { Email = "test@test.com", Password = "password" })
+        );
+        var auth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
+
+        await client.PostAsync(
+            "/api/auth/refresh",
+            JsonContent.Create(new { RefreshToken = auth!.RefreshToken })
+        );
+
+        var response = await client.PostAsync(
+            "/api/auth/refresh",
+            JsonContent.Create(new { RefreshToken = auth.RefreshToken })
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

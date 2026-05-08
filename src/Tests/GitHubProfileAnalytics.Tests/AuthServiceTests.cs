@@ -92,7 +92,7 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
-    public async Task RegisterReturnsAccessToken()
+    public async Task RegisterReturnsAccessTokenAndRefreshToken()
     {
         var db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
@@ -103,6 +103,7 @@ public sealed class AuthServiceTests
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
     }
 
     [Fact]
@@ -133,7 +134,7 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
-    public async Task LoginReturnsAccessToken()
+    public async Task LoginReturnsAccessTokenAndRefreshToken()
     {
         var db = CreateDbContext();
         await SeedUser(db, email: "user@test.com", password: "password");
@@ -145,6 +146,84 @@ public sealed class AuthServiceTests
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshWithValidTokenReturnsNewTokenPair()
+    {
+        var db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        var auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+
+        var result = await sut.RefreshAsync(auth!.RefreshToken);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
+        Assert.NotEqual(auth.RefreshToken, result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshRevokesOldToken()
+    {
+        var db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        var auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+        var oldToken = auth!.RefreshToken;
+
+        await sut.RefreshAsync(oldToken);
+
+        var revoked = await db.RefreshTokens.FirstAsync(rt => rt.Token == oldToken);
+        Assert.NotNull(revoked.RevokedAt);
+    }
+
+    [Fact]
+    public async Task RefreshWithUnknownTokenReturnsNull()
+    {
+        var sut = new AuthService(CreateDbContext(), CreateConfiguration());
+
+        var result = await sut.RefreshAsync("nonexistent-token");
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task RefreshWithAlreadyUsedTokenReturnsNull()
+    {
+        var db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        var auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+        var oldToken = auth!.RefreshToken;
+
+        await sut.RefreshAsync(oldToken);
+        var result = await sut.RefreshAsync(oldToken);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task RefreshWithExpiredTokenReturnsNull()
+    {
+        var db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        var auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+
+        var token = await db.RefreshTokens.FirstAsync(rt => rt.Token == auth!.RefreshToken);
+        token.ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1);
+        await db.SaveChangesAsync();
+
+        var result = await sut.RefreshAsync(auth!.RefreshToken);
+
+        Assert.Null(result);
     }
 
     [Fact]
