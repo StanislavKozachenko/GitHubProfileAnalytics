@@ -36,8 +36,14 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("refresh")]
-    public ActionResult<AuthResponse> Refresh()
+    public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest request)
     {
-        return StatusCode(501);
+        var result = await authService.RefreshAsync(request.RefreshToken);
+        if (result is null)
+        {
+            return Unauthorized();
+        }
+
+        return result;
     }
 }

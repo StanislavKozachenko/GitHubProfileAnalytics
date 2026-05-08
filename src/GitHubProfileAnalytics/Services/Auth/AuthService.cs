@@ -1,10 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using GitHubProfileAnalytics.Data;
 using GitHubProfileAnalytics.Domain;
 using GitHubProfileAnalytics.DTOs.Auth;
-using GitHubProfileAnalytics.DTOs.GitHub;
 using GitHubProfileAnalytics.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -32,7 +32,7 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        return GenerateAccessToken(user);
+        return await GenerateTokenPairAsync(user);
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
@@ -48,26 +48,49 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
             return null;
         }
 
-        return GenerateAccessToken(user);
+        return await GenerateTokenPairAsync(user);
     }
 
-    private AuthResponse GenerateAccessToken(User user)
+    public async Task<AuthResponse?> RefreshAsync(string token)
+    {
+        var refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == token);
+
+        if (
+            refreshToken is null
+            || refreshToken.RevokedAt is not null
+            || refreshToken.ExpiresAt <= DateTimeOffset.UtcNow
+        )
+        {
+            return null;
+        }
+
+        var user = await context.Users.FindAsync(refreshToken.UserId);
+        if (user is null)
+        {
+            return null;
+        }
+
+        refreshToken.RevokedAt = DateTimeOffset.UtcNow;
+        await context.SaveChangesAsync();
+
+        return await GenerateTokenPairAsync(user);
+    }
+
+    private async Task<AuthResponse> GenerateTokenPairAsync(User user)
     {
         var jwtKey = configuration.GetRequired("Jwt:Key");
         var issuer = configuration.GetRequired("Jwt:Issuer");
         var audience = configuration.GetRequired("Jwt:Audience");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
         };
 
-        var token = new JwtSecurityToken(
+        var jwtToken = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
@@ -75,6 +98,22 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
             signingCredentials: credentials
         );
 
-        return new AuthResponse { AccessToken = new JwtSecurityTokenHandler().WriteToken(token) };
+        var refreshToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            UserId = user.Id,
+            CreatedAt = DateTimeOffset.UtcNow,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
+        };
+
+        context.RefreshTokens.Add(refreshToken);
+        await context.SaveChangesAsync();
+
+        return new AuthResponse
+        {
+            AccessToken = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+            RefreshToken = refreshToken.Token,
+        };
     }
 }
