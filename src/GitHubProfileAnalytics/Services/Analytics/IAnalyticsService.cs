@@ -4,5 +4,5 @@ namespace GitHubProfileAnalytics.Services.Analytics;
 
 public interface IAnalyticsService
 {
-    Task<GitHubAnalyticsDto> GetAnalyticsAsync(string username);
+    public Task<GitHubAnalyticsDto> GetAnalyticsAsync(string username);
 }

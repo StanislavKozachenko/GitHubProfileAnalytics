@@ -11,21 +11,23 @@ namespace GitHubProfileAnalytics.Controllers;
 [ApiController]
 [Route("api/github")]
 [Authorize]
-public class GitHubController(IProfileCacheService profileCacheService, AppDbContext context)
-    : ControllerBase
+public class GitHubController(
+    IProfileCacheService profileCacheService,
+    AppDbContext context
+) : ControllerBase
 {
     [HttpGet("{username}")]
     public async Task<ActionResult<GitHubProfileDto>> GetProfile(string username)
     {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+        string? userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out Guid userId))
         {
             return Unauthorized();
         }
 
-        var profile = await profileCacheService.GetProfileAsync(username);
+        GitHubProfileDto profile = await profileCacheService.GetProfileAsync(username);
 
-        context.SearchHistories.Add(
+        _ = context.SearchHistories.Add(
             new SearchHistory
             {
                 Id = Guid.NewGuid(),
@@ -35,7 +37,7 @@ public class GitHubController(IProfileCacheService profileCacheService, AppDbCon
             }
         );
 
-        await context.SaveChangesAsync();
+        _ = await context.SaveChangesAsync();
 
         return profile;
     }

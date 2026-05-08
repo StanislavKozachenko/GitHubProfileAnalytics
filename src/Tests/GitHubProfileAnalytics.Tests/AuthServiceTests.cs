@@ -13,23 +13,27 @@ public sealed class AuthServiceTests
 {
     private static AppDbContext CreateDbContext()
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        DbContextOptions<AppDbContext> options =
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
         return new AppDbContext(options);
     }
 
-    private static IConfiguration CreateConfiguration() =>
-        new ConfigurationBuilder()
+    private static IConfiguration CreateConfiguration()
+    {
+        return new ConfigurationBuilder()
             .AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
-                    ["Jwt:Key"] = "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256",
+                    ["Jwt:Key"] =
+                        "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256",
                     ["Jwt:Issuer"] = "test-issuer",
                     ["Jwt:Audience"] = "test-audience",
                 }
             )
             .Build();
+    }
 
     private static async Task<User> SeedUser(
         AppDbContext db,
@@ -44,19 +48,19 @@ public sealed class AuthServiceTests
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             CreatedAt = DateTimeOffset.UtcNow,
         };
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
+        _ = db.Users.Add(user);
+        _ = await db.SaveChangesAsync();
         return user;
     }
 
     [Fact]
     public async Task RegisterReturnsNullWhenEmailAlreadyExists()
     {
-        var db = CreateDbContext();
-        await SeedUser(db, email: "existing@test.com");
+        AppDbContext db = CreateDbContext();
+        _ = await SeedUser(db, email: "existing@test.com");
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.RegisterAsync(
+        AuthResponse? result = await sut.RegisterAsync(
             new RegisterRequest { Email = "existing@test.com", Password = "pass" }
         );
 
@@ -66,52 +70,55 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task RegisterCreatesUserInDatabase()
     {
-        var db = CreateDbContext();
+        AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        await sut.RegisterAsync(new RegisterRequest { Email = "new@test.com", Password = "pass" });
+        _ = await sut.RegisterAsync(
+            new RegisterRequest { Email = "new@test.com", Password = "pass" }
+        );
 
-        Assert.Single(db.Users);
+        _ = Assert.Single(db.Users);
         Assert.Equal("new@test.com", db.Users.Single().Email);
     }
 
     [Fact]
     public async Task RegisterHashesPasswordBeforeSaving()
     {
-        var db = CreateDbContext();
+        AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
         const string plainPassword = "mysecretpassword";
 
-        await sut.RegisterAsync(
+        _ = await sut.RegisterAsync(
             new RegisterRequest { Email = "new@test.com", Password = plainPassword }
         );
 
-        var storedHash = db.Users.Single().PasswordHash;
+        string storedHash = db.Users.Single().PasswordHash;
         Assert.NotEqual(plainPassword, storedHash);
         Assert.True(BCrypt.Net.BCrypt.Verify(plainPassword, storedHash));
     }
 
     [Fact]
-    public async Task RegisterReturnsAccessToken()
+    public async Task RegisterReturnsAccessTokenAndRefreshToken()
     {
-        var db = CreateDbContext();
+        AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.RegisterAsync(
+        AuthResponse? result = await sut.RegisterAsync(
             new RegisterRequest { Email = "new@test.com", Password = "pass" }
         );
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
     }
 
     [Fact]
     public async Task LoginReturnsNullWhenUserNotFound()
     {
-        var db = CreateDbContext();
+        AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.LoginAsync(
+        AuthResponse? result = await sut.LoginAsync(
             new LoginRequest { Email = "unknown@test.com", Password = "pass" }
         );
 
@@ -121,11 +128,11 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task LoginReturnsNullWhenPasswordIsIncorrect()
     {
-        var db = CreateDbContext();
-        await SeedUser(db, email: "user@test.com", password: "correct");
+        AppDbContext db = CreateDbContext();
+        _ = await SeedUser(db, email: "user@test.com", password: "correct");
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.LoginAsync(
+        AuthResponse? result = await sut.LoginAsync(
             new LoginRequest { Email = "user@test.com", Password = "wrong" }
         );
 
@@ -133,47 +140,136 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
-    public async Task LoginReturnsAccessToken()
+    public async Task LoginReturnsAccessTokenAndRefreshToken()
     {
-        var db = CreateDbContext();
-        await SeedUser(db, email: "user@test.com", password: "password");
+        AppDbContext db = CreateDbContext();
+        _ = await SeedUser(db, email: "user@test.com", password: "password");
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.LoginAsync(
+        AuthResponse? result = await sut.LoginAsync(
             new LoginRequest { Email = "user@test.com", Password = "password" }
         );
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshWithValidTokenReturnsNewTokenPair()
+    {
+        AppDbContext db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        AuthResponse? auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+
+        AuthResponse? result = await sut.RefreshAsync(auth!.RefreshToken);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
+        Assert.NotEqual(auth.RefreshToken, result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshRevokesOldToken()
+    {
+        AppDbContext db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        AuthResponse? auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+        string oldToken = auth!.RefreshToken;
+
+        _ = await sut.RefreshAsync(oldToken);
+
+        RefreshToken revoked = await db.RefreshTokens.FirstAsync(rt =>
+            rt.Token == oldToken
+        );
+        _ = Assert.NotNull(revoked.RevokedAt);
+    }
+
+    [Fact]
+    public async Task RefreshWithUnknownTokenReturnsNull()
+    {
+        var sut = new AuthService(CreateDbContext(), CreateConfiguration());
+
+        AuthResponse? result = await sut.RefreshAsync("nonexistent-token");
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task RefreshWithAlreadyUsedTokenReturnsNull()
+    {
+        AppDbContext db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        AuthResponse? auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+        string oldToken = auth!.RefreshToken;
+
+        _ = await sut.RefreshAsync(oldToken);
+        AuthResponse? result = await sut.RefreshAsync(oldToken);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task RefreshWithExpiredTokenReturnsNull()
+    {
+        AppDbContext db = CreateDbContext();
+        var sut = new AuthService(db, CreateConfiguration());
+        AuthResponse? auth = await sut.RegisterAsync(
+            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+        );
+
+        RefreshToken token = await db.RefreshTokens.FirstAsync(rt =>
+            rt.Token == auth!.RefreshToken
+        );
+        token.ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1);
+        _ = await db.SaveChangesAsync();
+
+        AuthResponse? result = await sut.RefreshAsync(auth!.RefreshToken);
+
+        Assert.Null(result);
     }
 
     [Fact]
     public async Task AccessTokenContainsEmailClaim()
     {
-        var db = CreateDbContext();
+        AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
         const string email = "user@test.com";
 
-        var result = await sut.RegisterAsync(
+        AuthResponse? result = await sut.RegisterAsync(
             new RegisterRequest { Email = email, Password = "pass" }
         );
 
-        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result!.AccessToken);
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(
+            result!.AccessToken
+        );
         Assert.Contains(jwt.Claims, c => c.Type == ClaimTypes.Email && c.Value == email);
     }
 
     [Fact]
     public async Task AccessTokenContainsUserIdClaim()
     {
-        var db = CreateDbContext();
+        AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        var result = await sut.RegisterAsync(
+        AuthResponse? result = await sut.RegisterAsync(
             new RegisterRequest { Email = "user@test.com", Password = "pass" }
         );
 
-        var userId = db.Users.Single().Id.ToString();
-        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result!.AccessToken);
-        Assert.Contains(jwt.Claims, c => c.Type == ClaimTypes.NameIdentifier && c.Value == userId);
+        string userId = db.Users.Single().Id.ToString();
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(
+            result!.AccessToken
+        );
+        Assert.Contains(
+            jwt.Claims,
+            c => c.Type == ClaimTypes.NameIdentifier && c.Value == userId
+        );
     }
 }

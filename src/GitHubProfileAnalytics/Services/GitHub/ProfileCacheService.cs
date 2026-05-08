@@ -15,9 +15,12 @@ public class ProfileCacheService(
 {
     public async Task<GitHubProfileDto> GetProfileAsync(string username)
     {
-        var threshold = CacheHelper.GetThreshold(configuration, "ProfileCache:TtlHours");
+        DateTimeOffset threshold = CacheHelper.GetThreshold(
+            configuration,
+            "ProfileCache:TtlHours"
+        );
 
-        var cached = await context.ProfileCaches.FirstOrDefaultAsync(p =>
+        ProfileCache? cached = await context.ProfileCaches.FirstOrDefaultAsync(p =>
             p.GitHubUserName == username && p.CachedAt >= threshold
         );
 
@@ -29,15 +32,15 @@ public class ProfileCacheService(
                 );
         }
 
-        var profile = await gitHubService.GetProfileAsync(username);
+        GitHubProfileDto profile = await gitHubService.GetProfileAsync(username);
 
-        var entry = await context.ProfileCaches.FirstOrDefaultAsync(p =>
+        ProfileCache? entry = await context.ProfileCaches.FirstOrDefaultAsync(p =>
             p.GitHubUserName == username
         );
 
         if (entry is null)
         {
-            context.ProfileCaches.Add(
+            _ = context.ProfileCaches.Add(
                 new ProfileCache
                 {
                     Id = Guid.NewGuid(),
@@ -53,7 +56,7 @@ public class ProfileCacheService(
             entry.CachedAt = DateTimeOffset.UtcNow;
         }
 
-        await context.SaveChangesAsync();
+        _ = await context.SaveChangesAsync();
         return profile;
     }
 }

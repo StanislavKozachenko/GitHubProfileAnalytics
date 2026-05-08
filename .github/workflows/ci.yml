@@ -28,13 +28,19 @@ jobs:
           dotnet-version: 10.x.x
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: |
+          dotnet restore GitHubProfileAnalytics/GitHubProfileAnalytics.csproj
+          dotnet restore Tests/GitHubProfileAnalytics.Tests/GitHubProfileAnalytics.Tests.csproj
 
       - name: Build
-        run: dotnet build --no-restore -warnaserror
+        run: |
+          dotnet build GitHubProfileAnalytics/GitHubProfileAnalytics.csproj --no-restore -warnaserror
+          dotnet build Tests/GitHubProfileAnalytics.Tests/GitHubProfileAnalytics.Tests.csproj --no-restore -warnaserror
 
       - name: Code style check by dotnet format
-        run: dotnet format --verify-no-changes
+        run: |
+          dotnet format GitHubProfileAnalytics/GitHubProfileAnalytics.csproj --verify-no-changes
+          dotnet format Tests/GitHubProfileAnalytics.Tests/GitHubProfileAnalytics.Tests.csproj --verify-no-changes
 
       - name: Install csharpier
         run: dotnet tool install -g csharpier
@@ -43,7 +49,7 @@ jobs:
         run: csharpier check .
 
       - name: Test
-        run: dotnet test --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
+        run: dotnet test Tests/GitHubProfileAnalytics.Tests/GitHubProfileAnalytics.Tests.csproj --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
 
       - name: Combine Coverage Reports
         uses: danielpalme/ReportGenerator-GitHub-Action@5.5.7
@@ -80,4 +86,4 @@ jobs:
         run: dotnet tool install -g dotnet-stryker
 
       - name: Run mutation test
-        run: dotnet stryker --mutation-level Complete --break-at ${{ env.MUTATION_THRESHOLD }}
+        run: dotnet stryker --project GitHubProfileAnalytics/GitHubProfileAnalytics.csproj --test-project Tests/GitHubProfileAnalytics.Tests/GitHubProfileAnalytics.Tests.csproj --mutation-level Complete --break-at ${{ env.MUTATION_THRESHOLD }}

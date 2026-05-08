@@ -8,7 +8,7 @@ public static class CacheHelper
         int defaultHours = 1
     )
     {
-        var ttlHours = configuration.GetValue<int>(key, defaultHours);
+        int ttlHours = configuration.GetValue(key, defaultHours);
         return DateTimeOffset.UtcNow.AddHours(-ttlHours);
     }
 }

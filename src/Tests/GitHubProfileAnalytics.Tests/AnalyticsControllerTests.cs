@@ -20,16 +20,16 @@ namespace GitHubProfileAnalytics.Tests;
 
 public sealed class AnalyticsControllerTests
 {
-    private const string JwtKey = "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
+    private const string JwtKey =
+        "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
     private const string JwtIssuer = "test-issuer";
     private const string JwtAudience = "test-audience";
 
     private readonly WebApplicationFactory<Program> _factory =
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
+            _ = builder.ConfigureAppConfiguration(
                 (_, config) =>
-                {
                     config.AddInMemoryCollection(
                         new Dictionary<string, string?>
                         {
@@ -38,32 +38,33 @@ public sealed class AnalyticsControllerTests
                             ["Jwt:Audience"] = JwtAudience,
                             ["GitHub:Token"] = "test-token",
                         }
-                    );
-                }
+                    )
             );
 
-            builder.ConfigureServices(services =>
+            _ = builder.ConfigureServices(services =>
             {
-                var dbDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? dbDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(DbContextOptions<AppDbContext>)
                 );
-                services.Remove(dbDescriptor!);
-                services.AddDbContext<AppDbContext>(options =>
+                _ = services.Remove(dbDescriptor!);
+                _ = services.AddDbContext<AppDbContext>(options =>
                     options.UseInMemoryDatabase(Guid.NewGuid().ToString())
                 );
 
-                var cacheDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? cacheDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(IAnalyticsCacheService)
                 );
-                services.Remove(cacheDescriptor!);
-                var mockCache = Substitute.For<IAnalyticsCacheService>();
-                mockCache.GetAnalyticsAsync(Arg.Any<string>()).Returns(new GitHubAnalyticsDto());
-                services.AddSingleton(mockCache);
+                _ = services.Remove(cacheDescriptor!);
+                IAnalyticsCacheService mockCache =
+                    Substitute.For<IAnalyticsCacheService>();
+                _ = mockCache
+                    .GetAnalyticsAsync(Arg.Any<string>())
+                    .Returns(new GitHubAnalyticsDto());
+                _ = services.AddSingleton(mockCache);
 
-                services.PostConfigure<JwtBearerOptions>(
+                _ = services.PostConfigure<JwtBearerOptions>(
                     JwtBearerDefaults.AuthenticationScheme,
                     options =>
-                    {
                         options.TokenValidationParameters = new TokenValidationParameters
                         {
                             ValidateIssuer = true,
@@ -75,14 +76,14 @@ public sealed class AnalyticsControllerTests
                             IssuerSigningKey = new SymmetricSecurityKey(
                                 Encoding.UTF8.GetBytes(JwtKey)
                             ),
-                        };
-                    }
+                        }
                 );
             });
         });
 
-    private static string GenerateToken() =>
-        new JwtSecurityTokenHandler().WriteToken(
+    private static string GenerateToken()
+    {
+        return new JwtSecurityTokenHandler().WriteToken(
             new JwtSecurityToken(
                 issuer: JwtIssuer,
                 audience: JwtAudience,
@@ -94,13 +95,14 @@ public sealed class AnalyticsControllerTests
                 )
             )
         );
+    }
 
     [Fact]
     public async Task GetAnalyticsWithoutTokenReturns401()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/analytics/someuser");
+        HttpResponseMessage response = await client.GetAsync("/api/analytics/someuser");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -108,13 +110,13 @@ public sealed class AnalyticsControllerTests
     [Fact]
     public async Task GetAnalyticsWithTokenReturns200()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
             GenerateToken()
         );
 
-        var response = await client.GetAsync("/api/analytics/someuser");
+        HttpResponseMessage response = await client.GetAsync("/api/analytics/someuser");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -122,26 +124,26 @@ public sealed class AnalyticsControllerTests
     [Fact]
     public async Task GetAnalyticsWithUndefinedUserReturns404()
     {
-        var analyticsCacheService = Substitute.For<IAnalyticsCacheService>();
+        IAnalyticsCacheService analyticsCacheService =
+            Substitute.For<IAnalyticsCacheService>();
 
-        var client = _factory
+        HttpClient client = _factory
             .WithWebHostBuilder(builder =>
-            {
                 builder.ConfigureServices(services =>
                 {
-                    var cacheDescriptor = services.SingleOrDefault(d =>
+                    ServiceDescriptor? cacheDescriptor = services.SingleOrDefault(d =>
                         d.ServiceType == typeof(IAnalyticsCacheService)
                     );
-                    services.Remove(cacheDescriptor!);
+                    _ = services.Remove(cacheDescriptor!);
 
-                    analyticsCacheService
+                    _ = analyticsCacheService
                         .GetAnalyticsAsync(Arg.Any<string>())
                         .Throws(
-                            new NotFoundException("Not found", System.Net.HttpStatusCode.NotFound)
+                            new NotFoundException("Not found", HttpStatusCode.NotFound)
                         );
-                    services.AddSingleton(analyticsCacheService);
-                });
-            })
+                    _ = services.AddSingleton(analyticsCacheService);
+                })
+            )
             .CreateClient();
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
@@ -149,7 +151,9 @@ public sealed class AnalyticsControllerTests
             GenerateToken()
         );
 
-        var response = await client.GetAsync("/api/analytics/unknownuser");
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/analytics/unknownuser"
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

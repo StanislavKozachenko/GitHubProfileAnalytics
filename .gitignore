@@ -18,3 +18,4 @@ appsettings.*.json
 Thumbs.db
 
 StrykerOutput/
+*.slnx

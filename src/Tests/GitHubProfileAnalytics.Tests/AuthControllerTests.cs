@@ -11,16 +11,16 @@ namespace GitHubProfileAnalytics.Tests;
 
 public sealed class AuthControllerTests
 {
-    private const string JwtKey = "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
+    private const string JwtKey =
+        "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
     private const string JwtIssuer = "test-issuer";
     private const string JwtAudience = "test-audience";
 
     private readonly WebApplicationFactory<Program> _factory =
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
+            _ = builder.ConfigureAppConfiguration(
                 (_, config) =>
-                {
                     config.AddInMemoryCollection(
                         new Dictionary<string, string?>
                         {
@@ -29,25 +29,26 @@ public sealed class AuthControllerTests
                             ["Jwt:Audience"] = JwtAudience,
                             ["GitHub:Token"] = "test-token",
                         }
-                    );
-                }
+                    )
             );
 
-            builder.ConfigureServices(services =>
+            _ = builder.ConfigureServices(services =>
             {
-                var dbContextDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? dbContextDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(AppDbContext)
                 );
-                services.Remove(dbContextDescriptor!);
+                _ = services.Remove(dbContextDescriptor!);
 
-                var dbOptionsDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? dbOptionsDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(DbContextOptions<AppDbContext>)
                 );
-                services.Remove(dbOptionsDescriptor!);
+                _ = services.Remove(dbOptionsDescriptor!);
 
-                var dbName = Guid.NewGuid().ToString();
-                services.AddScoped(_ => new AppDbContext(
-                    new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName).Options
+                string dbName = Guid.NewGuid().ToString();
+                _ = services.AddScoped(_ => new AppDbContext(
+                    new DbContextOptionsBuilder<AppDbContext>()
+                        .UseInMemoryDatabase(dbName)
+                        .Options
                 ));
             });
         });
@@ -55,30 +56,31 @@ public sealed class AuthControllerTests
     [Fact]
     public async Task RegisterReturns200WithAccessToken()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        var response = await client.PostAsync(
+        HttpResponseMessage response = await client.PostAsync(
             "/api/auth/register",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(content?.AccessToken);
+        AuthResponse? content = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        Assert.NotNull(content);
         Assert.NotEmpty(content.AccessToken);
+        Assert.NotEmpty(content.RefreshToken);
     }
 
     [Fact]
     public async Task RegisterWithExistingEmailReturns409()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        await client.PostAsync(
+        _ = await client.PostAsync(
             "/api/auth/register",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
 
-        var response = await client.PostAsync(
+        HttpResponseMessage response = await client.PostAsync(
             "/api/auth/register",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
@@ -89,37 +91,40 @@ public sealed class AuthControllerTests
     [Fact]
     public async Task LoginReturns200WithAccessToken()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        await client.PostAsync(
+        _ = await client.PostAsync(
             "/api/auth/register",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
 
-        var response = await client.PostAsync(
+        HttpResponseMessage response = await client.PostAsync(
             "/api/auth/login",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(content?.AccessToken);
+        AuthResponse? content = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        Assert.NotNull(content);
         Assert.NotEmpty(content.AccessToken);
+        Assert.NotEmpty(content.RefreshToken);
     }
 
     [Fact]
     public async Task LoginWithWrongPasswordReturns401()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        await client.PostAsync(
+        _ = await client.PostAsync(
             "/api/auth/register",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
 
-        var response = await client.PostAsync(
+        HttpResponseMessage response = await client.PostAsync(
             "/api/auth/login",
-            JsonContent.Create(new { Email = "test@test.com", Password = "wrongpassword" })
+            JsonContent.Create(
+                new { Email = "test@test.com", Password = "wrongpassword" }
+            )
         );
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -128,14 +133,14 @@ public sealed class AuthControllerTests
     [Fact]
     public async Task LoginWithUnknownEmailReturns401()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        await client.PostAsync(
+        _ = await client.PostAsync(
             "/api/auth/register",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
 
-        var response = await client.PostAsync(
+        HttpResponseMessage response = await client.PostAsync(
             "/api/auth/login",
             JsonContent.Create(new { Email = "wrong@test.com", Password = "password" })
         );
@@ -144,15 +149,65 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshReturns501()
+    public async Task RefreshWithValidTokenReturns200WithNewTokenPair()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        var response = await client.PostAsync(
-            "/api/auth/refresh",
+        HttpResponseMessage registerResponse = await client.PostAsync(
+            "/api/auth/register",
             JsonContent.Create(new { Email = "test@test.com", Password = "password" })
         );
+        AuthResponse? auth =
+            await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
 
-        Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
+        HttpResponseMessage response = await client.PostAsync(
+            "/api/auth/refresh",
+            JsonContent.Create(new { auth!.RefreshToken })
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AuthResponse? result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
+        Assert.NotEqual(auth.RefreshToken, result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshWithUnknownTokenReturns401()
+    {
+        HttpClient client = _factory.CreateClient();
+
+        HttpResponseMessage response = await client.PostAsync(
+            "/api/auth/refresh",
+            JsonContent.Create(new { RefreshToken = "nonexistent-token" })
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RefreshWithAlreadyUsedTokenReturns401()
+    {
+        HttpClient client = _factory.CreateClient();
+
+        HttpResponseMessage registerResponse = await client.PostAsync(
+            "/api/auth/register",
+            JsonContent.Create(new { Email = "test@test.com", Password = "password" })
+        );
+        AuthResponse? auth =
+            await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
+
+        _ = await client.PostAsync(
+            "/api/auth/refresh",
+            JsonContent.Create(new { auth!.RefreshToken })
+        );
+
+        HttpResponseMessage response = await client.PostAsync(
+            "/api/auth/refresh",
+            JsonContent.Create(new { auth.RefreshToken })
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

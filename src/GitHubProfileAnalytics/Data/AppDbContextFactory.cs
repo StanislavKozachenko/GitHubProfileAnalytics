@@ -7,13 +7,14 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
-        var configuration = new ConfigurationBuilder()
+        IConfigurationRoot configuration = new ConfigurationBuilder()
             .AddUserSecrets<AppDbContextFactory>()
             .Build();
 
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
-            .Options;
+        DbContextOptions<AppDbContext> options =
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                .Options;
 
         return new AppDbContext(options);
     }

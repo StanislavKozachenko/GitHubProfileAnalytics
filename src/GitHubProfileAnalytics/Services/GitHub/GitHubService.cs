@@ -1,4 +1,3 @@
-using GitHubProfileAnalytics.DTOs.Auth;
 using GitHubProfileAnalytics.DTOs.GitHub;
 using Octokit;
 
@@ -8,7 +7,7 @@ public class GitHubService(IGitHubClient client) : IGitHubService
 {
     public async Task<GitHubProfileDto> GetProfileAsync(string username)
     {
-        var user = await client.User.Get(username);
+        User user = await client.User.Get(username);
 
         return new GitHubProfileDto
         {

@@ -5,15 +5,19 @@ namespace GitHubProfileAnalytics.Tests;
 
 public class ExtensionsTests
 {
-    private static IConfiguration BuildConfig(Dictionary<string, string?> values) =>
-        new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    private static IConfiguration BuildConfig(Dictionary<string, string?> values)
+    {
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
 
     [Fact]
     public void GetRequiredReturnsValueWhenKeyExists()
     {
-        var config = BuildConfig(new Dictionary<string, string?> { ["MyKey"] = "myvalue" });
+        IConfiguration config = BuildConfig(
+            new Dictionary<string, string?> { ["MyKey"] = "myvalue" }
+        );
 
-        var result = config.GetRequired("MyKey");
+        string result = config.GetRequired("MyKey");
 
         Assert.Equal("myvalue", result);
     }
@@ -21,9 +25,11 @@ public class ExtensionsTests
     [Fact]
     public void GetRequiredThrowsWhenKeyMissing()
     {
-        var config = BuildConfig(new Dictionary<string, string?>());
+        IConfiguration config = BuildConfig([]);
 
-        var ex = Assert.Throws<InvalidOperationException>(() => config.GetRequired("Missing:Key"));
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+            config.GetRequired("Missing:Key")
+        );
 
         Assert.Contains("Missing:Key", ex.Message);
     }
@@ -31,24 +37,26 @@ public class ExtensionsTests
     [Fact]
     public void GetThresholdReturnsOffsetBasedOnConfiguredTtl()
     {
-        var config = BuildConfig(new Dictionary<string, string?> { ["Cache:TtlHours"] = "2" });
-        var before = DateTimeOffset.UtcNow.AddHours(-2);
+        IConfiguration config = BuildConfig(
+            new Dictionary<string, string?> { ["Cache:TtlHours"] = "2" }
+        );
+        DateTimeOffset before = DateTimeOffset.UtcNow.AddHours(-2);
 
-        var threshold = CacheHelper.GetThreshold(config, "Cache:TtlHours");
+        DateTimeOffset threshold = CacheHelper.GetThreshold(config, "Cache:TtlHours");
 
-        var after = DateTimeOffset.UtcNow.AddHours(-2);
+        DateTimeOffset after = DateTimeOffset.UtcNow.AddHours(-2);
         Assert.InRange(threshold, before, after);
     }
 
     [Fact]
     public void GetThresholdUsesDefaultWhenKeyMissing()
     {
-        var config = BuildConfig(new Dictionary<string, string?>());
-        var before = DateTimeOffset.UtcNow.AddHours(-1);
+        IConfiguration config = BuildConfig([]);
+        DateTimeOffset before = DateTimeOffset.UtcNow.AddHours(-1);
 
-        var threshold = CacheHelper.GetThreshold(config, "Missing:Key");
+        DateTimeOffset threshold = CacheHelper.GetThreshold(config, "Missing:Key");
 
-        var after = DateTimeOffset.UtcNow.AddHours(-1);
+        DateTimeOffset after = DateTimeOffset.UtcNow.AddHours(-1);
         Assert.InRange(threshold, before, after);
     }
 }
