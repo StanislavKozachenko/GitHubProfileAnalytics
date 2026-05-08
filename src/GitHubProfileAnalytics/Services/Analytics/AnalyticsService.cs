@@ -1,4 +1,5 @@
 using GitHubProfileAnalytics.DTOs.Analytics;
+using GitHubProfileAnalytics.DTOs.GitHub;
 using GitHubProfileAnalytics.Services.GitHub;
 using Octokit;
 
@@ -9,16 +10,16 @@ public class AnalyticsService(IGitHubService gitHubService, IGitHubClient gitHub
 {
     public async Task<GitHubAnalyticsDto> GetAnalyticsAsync(string username)
     {
-        var profile = await gitHubService.GetProfileAsync(username);
+        GitHubProfileDto profile = await gitHubService.GetProfileAsync(username);
 
-        var accountAgeDays = (int)(DateTimeOffset.UtcNow - profile.CreatedAt).TotalDays;
+        int accountAgeDays = (int)(DateTimeOffset.UtcNow - profile.CreatedAt).TotalDays;
 
-        var followersRatio =
+        double followersRatio =
             profile.Following > 0
                 ? Math.Round((double)profile.Followers / profile.Following, 2)
                 : profile.Followers;
 
-        var reposPerYear =
+        double reposPerYear =
             accountAgeDays > 0
                 ? Math.Round((double)profile.PublicRepos / accountAgeDays * 365, 2)
                 : 0;
@@ -30,15 +31,18 @@ public class AnalyticsService(IGitHubService gitHubService, IGitHubClient gitHub
             ReposPerYear = reposPerYear,
         };
 
-        var repos = await gitHubClient.Repository.GetAllForUser(username);
+        IReadOnlyList<Repository> repos = await gitHubClient.Repository.GetAllForUser(
+            username
+        );
 
-        var totalStars = repos.Sum(r => r.StargazersCount);
-        var totalForks = repos.Sum(r => r.ForksCount);
-        var averageStars = repos.Count > 0 ? Math.Round((double)totalStars / repos.Count, 2) : 0;
+        int totalStars = repos.Sum(r => r.StargazersCount);
+        int totalForks = repos.Sum(r => r.ForksCount);
+        double averageStars =
+            repos.Count > 0 ? Math.Round((double)totalStars / repos.Count, 2) : 0;
 
         var languages = repos
             .Where(r => r.Language != null)
-            .GroupBy(r => r.Language!)
+            .GroupBy(r => r.Language)
             .Select(g => new LanguageStat
             {
                 Name = g.Key,
@@ -56,7 +60,8 @@ public class AnalyticsService(IGitHubService gitHubService, IGitHubClient gitHub
             TopLanguages = languages,
         };
 
-        var events = await gitHubClient.Activity.Events.GetAllUserPerformed(username);
+        IReadOnlyList<Activity> events =
+            await gitHubClient.Activity.Events.GetAllUserPerformed(username);
 
         var activityMetrics = new ActivityMetrics
         {
@@ -72,8 +77,8 @@ public class AnalyticsService(IGitHubService gitHubService, IGitHubClient gitHub
         var contributionGraph = events
             .GroupBy(e =>
             {
-                var date = e.CreatedAt.UtcDateTime;
-                var daysFromMonday = (date.DayOfWeek - DayOfWeek.Monday + 7) % 7;
+                DateTime date = e.CreatedAt.UtcDateTime;
+                int daysFromMonday = (date.DayOfWeek - DayOfWeek.Monday + 7) % 7;
                 return DateOnly.FromDateTime(date.AddDays(-daysFromMonday));
             })
             .Select(g => new ContributionWeek { Week = g.Key, Count = g.Count() })

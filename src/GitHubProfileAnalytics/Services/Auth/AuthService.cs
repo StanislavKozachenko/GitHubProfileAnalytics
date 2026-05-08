@@ -11,11 +11,12 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace GitHubProfileAnalytics.Services.Auth;
 
-public class AuthService(AppDbContext context, IConfiguration configuration) : IAuthService
+public class AuthService(AppDbContext context, IConfiguration configuration)
+    : IAuthService
 {
     public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)
     {
-        var exists = await context.Users.AnyAsync(u => u.Email == request.Email);
+        bool exists = await context.Users.AnyAsync(u => u.Email == request.Email);
         if (exists)
         {
             return null;
@@ -29,31 +30,27 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
             CreatedAt = DateTimeOffset.UtcNow,
         };
 
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
+        _ = context.Users.Add(user);
+        _ = await context.SaveChangesAsync();
 
         return await GenerateTokenPairAsync(user);
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-        if (user is null)
-        {
-            return null;
-        }
-
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-        {
-            return null;
-        }
-
-        return await GenerateTokenPairAsync(user);
+        User? user = await context.Users.FirstOrDefaultAsync(u =>
+            u.Email == request.Email
+        );
+        return user is null ? null
+            : !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash) ? null
+            : await GenerateTokenPairAsync(user);
     }
 
     public async Task<AuthResponse?> RefreshAsync(string token)
     {
-        var refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == token);
+        RefreshToken? refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(rt =>
+            rt.Token == token
+        );
 
         if (
             refreshToken is null
@@ -64,31 +61,31 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
             return null;
         }
 
-        var user = await context.Users.FindAsync(refreshToken.UserId);
+        User? user = await context.Users.FindAsync(refreshToken.UserId);
         if (user is null)
         {
             return null;
         }
 
         refreshToken.RevokedAt = DateTimeOffset.UtcNow;
-        await context.SaveChangesAsync();
+        _ = await context.SaveChangesAsync();
 
         return await GenerateTokenPairAsync(user);
     }
 
     private async Task<AuthResponse> GenerateTokenPairAsync(User user)
     {
-        var jwtKey = configuration.GetRequired("Jwt:Key");
-        var issuer = configuration.GetRequired("Jwt:Issuer");
-        var audience = configuration.GetRequired("Jwt:Audience");
+        string jwtKey = configuration.GetRequired("Jwt:Key");
+        string issuer = configuration.GetRequired("Jwt:Issuer");
+        string audience = configuration.GetRequired("Jwt:Audience");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var claims = new[]
-        {
+        Claim[] claims =
+        [
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-        };
+        ];
 
         var jwtToken = new JwtSecurityToken(
             issuer: issuer,
@@ -107,8 +104,8 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
         };
 
-        context.RefreshTokens.Add(refreshToken);
-        await context.SaveChangesAsync();
+        _ = context.RefreshTokens.Add(refreshToken);
+        _ = await context.SaveChangesAsync();
 
         return new AuthResponse
         {

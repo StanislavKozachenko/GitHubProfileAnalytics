@@ -13,7 +13,7 @@ public class AnalyticsController(IAnalyticsCacheService cacheService) : Controll
     [HttpGet("{username}")]
     public async Task<ActionResult<GitHubAnalyticsDto>> GetAnalytics(string username)
     {
-        var analytics = await cacheService.GetAnalyticsAsync(username);
+        GitHubAnalyticsDto analytics = await cacheService.GetAnalyticsAsync(username);
         return analytics;
     }
 }

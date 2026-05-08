@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Octokit;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -20,7 +20,6 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
-    {
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -32,12 +31,12 @@ builder
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration.GetRequired("Jwt:Key"))
             ),
-        };
-    });
+        }
+    );
 
 builder.Services.AddSingleton<IGitHubClient>(sp =>
 {
-    var token = sp.GetRequiredService<IConfiguration>().GetRequired("GitHub:Token");
+    string token = sp.GetRequiredService<IConfiguration>().GetRequired("GitHub:Token");
     return new GitHubClient(new ProductHeaderValue("GitHubProfileAnalytics"))
     {
         Credentials = new Credentials(token),
@@ -55,18 +54,18 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    _ = app.MapOpenApi();
 }
 else
 {
-    app.UseHsts();
+    _ = app.UseHsts();
 }
 
 app.UseHttpsRedirection();

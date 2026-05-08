@@ -15,9 +15,12 @@ public class AnalyticsCacheService(
 {
     public async Task<GitHubAnalyticsDto> GetAnalyticsAsync(string username)
     {
-        var threshold = CacheHelper.GetThreshold(configuration, "AnalyticsCache:TtlHours");
+        DateTimeOffset threshold = CacheHelper.GetThreshold(
+            configuration,
+            "AnalyticsCache:TtlHours"
+        );
 
-        var cached = await context.AnalyticsCaches.FirstOrDefaultAsync(p =>
+        AnalyticsCache? cached = await context.AnalyticsCaches.FirstOrDefaultAsync(p =>
             p.GitHubUserName == username && p.CachedAt >= threshold
         );
 
@@ -29,15 +32,17 @@ public class AnalyticsCacheService(
                 );
         }
 
-        var profileAnalytics = await analyticsService.GetAnalyticsAsync(username);
+        GitHubAnalyticsDto profileAnalytics = await analyticsService.GetAnalyticsAsync(
+            username
+        );
 
-        var entry = await context.AnalyticsCaches.FirstOrDefaultAsync(p =>
+        AnalyticsCache? entry = await context.AnalyticsCaches.FirstOrDefaultAsync(p =>
             p.GitHubUserName == username
         );
 
         if (entry is null)
         {
-            context.AnalyticsCaches.Add(
+            _ = context.AnalyticsCaches.Add(
                 new AnalyticsCache
                 {
                     Id = Guid.NewGuid(),
@@ -53,7 +58,7 @@ public class AnalyticsCacheService(
             entry.CachedAt = DateTimeOffset.UtcNow;
         }
 
-        await context.SaveChangesAsync();
+        _ = await context.SaveChangesAsync();
         return profileAnalytics;
     }
 }

@@ -20,16 +20,16 @@ namespace GitHubProfileAnalytics.Tests;
 
 public class GitHubControllerTests
 {
-    private const string JwtKey = "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
+    private const string JwtKey =
+        "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
     private const string JwtIssuer = "test-issuer";
     private const string JwtAudience = "test-audience";
 
     private readonly WebApplicationFactory<Program> _factory =
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
+            _ = builder.ConfigureAppConfiguration(
                 (_, config) =>
-                {
                     config.AddInMemoryCollection(
                         new Dictionary<string, string?>
                         {
@@ -38,39 +38,41 @@ public class GitHubControllerTests
                             ["Jwt:Audience"] = JwtAudience,
                             ["GitHub:Token"] = "test-token",
                         }
-                    );
-                }
+                    )
             );
 
-            builder.ConfigureServices(services =>
+            _ = builder.ConfigureServices(services =>
             {
-                var dbContextDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? dbContextDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(AppDbContext)
                 );
-                services.Remove(dbContextDescriptor!);
+                _ = services.Remove(dbContextDescriptor!);
 
-                var dbOptionsDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? dbOptionsDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(DbContextOptions<AppDbContext>)
                 );
-                services.Remove(dbOptionsDescriptor!);
+                _ = services.Remove(dbOptionsDescriptor!);
 
-                var dbName = Guid.NewGuid().ToString();
-                services.AddScoped(_ => new AppDbContext(
-                    new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName).Options
+                string dbName = Guid.NewGuid().ToString();
+                _ = services.AddScoped(_ => new AppDbContext(
+                    new DbContextOptionsBuilder<AppDbContext>()
+                        .UseInMemoryDatabase(dbName)
+                        .Options
                 ));
 
-                var cacheDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? cacheDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(IProfileCacheService)
                 );
-                services.Remove(cacheDescriptor!);
-                var mockCache = Substitute.For<IProfileCacheService>();
-                mockCache.GetProfileAsync(Arg.Any<string>()).Returns(new GitHubProfileDto());
-                services.AddSingleton(mockCache);
+                _ = services.Remove(cacheDescriptor!);
+                IProfileCacheService mockCache = Substitute.For<IProfileCacheService>();
+                _ = mockCache
+                    .GetProfileAsync(Arg.Any<string>())
+                    .Returns(new GitHubProfileDto());
+                _ = services.AddSingleton(mockCache);
 
-                services.PostConfigure<JwtBearerOptions>(
+                _ = services.PostConfigure<JwtBearerOptions>(
                     JwtBearerDefaults.AuthenticationScheme,
                     options =>
-                    {
                         options.TokenValidationParameters = new TokenValidationParameters
                         {
                             ValidateIssuer = true,
@@ -82,14 +84,14 @@ public class GitHubControllerTests
                             IssuerSigningKey = new SymmetricSecurityKey(
                                 Encoding.UTF8.GetBytes(JwtKey)
                             ),
-                        };
-                    }
+                        }
                 );
             });
         });
 
-    private static string GenerateToken() =>
-        new JwtSecurityTokenHandler().WriteToken(
+    private static string GenerateToken()
+    {
+        return new JwtSecurityTokenHandler().WriteToken(
             new JwtSecurityToken(
                 issuer: JwtIssuer,
                 audience: JwtAudience,
@@ -101,13 +103,14 @@ public class GitHubControllerTests
                 )
             )
         );
+    }
 
     [Fact]
     public async Task GetProfileWithoutTokenReturns401()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/github/someuser");
+        HttpResponseMessage response = await client.GetAsync("/api/github/someuser");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -115,43 +118,42 @@ public class GitHubControllerTests
     [Fact]
     public async Task GetProfileWithTokenReturns200()
     {
-        var client = _factory.CreateClient();
+        HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
             GenerateToken()
         );
 
-        var response = await client.GetAsync("/api/github/someuser");
+        HttpResponseMessage response = await client.GetAsync("/api/github/someuser");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        using IServiceScope scope = _factory.Services.CreateScope();
+        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.True(await db.SearchHistories.AnyAsync());
     }
 
     [Fact]
     public async Task GetProfileWithUndefinedUserReturns404()
     {
-        var profileCacheService = Substitute.For<IProfileCacheService>();
+        IProfileCacheService profileCacheService = Substitute.For<IProfileCacheService>();
 
-        var client = _factory
+        HttpClient client = _factory
             .WithWebHostBuilder(builder =>
-            {
                 builder.ConfigureServices(services =>
                 {
-                    var cacheDescriptor = services.SingleOrDefault(d =>
+                    ServiceDescriptor? cacheDescriptor = services.SingleOrDefault(d =>
                         d.ServiceType == typeof(IProfileCacheService)
                     );
-                    services.Remove(cacheDescriptor!);
+                    _ = services.Remove(cacheDescriptor!);
 
-                    profileCacheService
+                    _ = profileCacheService
                         .GetProfileAsync(Arg.Any<string>())
                         .Throws(
-                            new NotFoundException("Not found", System.Net.HttpStatusCode.NotFound)
+                            new NotFoundException("Not found", HttpStatusCode.NotFound)
                         );
-                    services.AddSingleton(profileCacheService);
-                });
-            })
+                    _ = services.AddSingleton(profileCacheService);
+                })
+            )
             .CreateClient();
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
@@ -159,7 +161,7 @@ public class GitHubControllerTests
             GenerateToken()
         );
 
-        var response = await client.GetAsync("/api/github/unknownuser");
+        HttpResponseMessage response = await client.GetAsync("/api/github/unknownuser");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

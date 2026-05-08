@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using GitHubProfileAnalytics.DTOs.Analytics;
 using GitHubProfileAnalytics.DTOs.GitHub;
 using GitHubProfileAnalytics.Services.Analytics;
 using GitHubProfileAnalytics.Services.GitHub;
@@ -15,21 +16,25 @@ public sealed class AnalyticsServiceTests
         List<Activity> events
     )
     {
-        var gitHubService = Substitute.For<IGitHubService>();
-        gitHubService.GetProfileAsync(Arg.Any<string>()).Returns(profile);
+        IGitHubService gitHubService = Substitute.For<IGitHubService>();
+        _ = gitHubService.GetProfileAsync(Arg.Any<string>()).Returns(profile);
 
-        var gitHubClient = Substitute.For<IGitHubClient>();
-        gitHubClient
+        IGitHubClient gitHubClient = Substitute.For<IGitHubClient>();
+        _ = gitHubClient
             .Repository.GetAllForUser(Arg.Any<string>())
             .Returns((IReadOnlyList<Repository>)repos);
-        gitHubClient
+        _ = gitHubClient
             .Activity.Events.GetAllUserPerformed(Arg.Any<string>())
             .Returns((IReadOnlyList<Activity>)events);
 
         return new AnalyticsService(gitHubService, gitHubClient);
     }
 
-    private static Repository CreateRepo(int stars = 0, int forks = 0, string? language = null)
+    private static Repository CreateRepo(
+        int stars = 0,
+        int forks = 0,
+        string? language = null
+    )
     {
         var repo = (Repository)RuntimeHelpers.GetUninitializedObject(typeof(Repository));
         Set(repo, "StargazersCount", stars);
@@ -46,7 +51,10 @@ public sealed class AnalyticsServiceTests
         return activity;
     }
 
-    private static Activity CreatePushEvent(int commitCount, DateTimeOffset? createdAt = null)
+    private static Activity CreatePushEvent(
+        int commitCount,
+        DateTimeOffset? createdAt = null
+    )
     {
         var commits = Enumerable
             .Range(0, commitCount)
@@ -55,7 +63,7 @@ public sealed class AnalyticsServiceTests
 
         var payload = (PushEventPayload)
             RuntimeHelpers.GetUninitializedObject(typeof(PushEventPayload));
-        Set(payload, "Commits", (IReadOnlyList<Commit>)commits);
+        Set(payload, "Commits", commits);
 
         var activity = (Activity)RuntimeHelpers.GetUninitializedObject(typeof(Activity));
         Set(activity, "Type", "PushEvent");
@@ -64,30 +72,34 @@ public sealed class AnalyticsServiceTests
         return activity;
     }
 
-    private static void Set(object obj, string name, object? value) =>
+    private static void Set(object obj, string name, object? value)
+    {
         obj.GetType().GetProperty(name)!.SetValue(obj, value);
+    }
 
     private static GitHubProfileDto CreateProfile(
         int followers = 0,
         int following = 0,
         int publicRepos = 0,
         DateTimeOffset? createdAt = null
-    ) =>
-        new()
+    )
+    {
+        return new()
         {
             Followers = followers,
             Following = following,
             PublicRepos = publicRepos,
             CreatedAt = createdAt ?? DateTimeOffset.UtcNow.AddDays(-365).AddHours(-1),
         };
+    }
 
     [Fact]
     public async Task CalculatesAccountAgeDaysCorrectly()
     {
-        var createdAt = DateTimeOffset.UtcNow.AddDays(-100).AddHours(-1);
-        var sut = CreateSut(CreateProfile(createdAt: createdAt), [], []);
+        DateTimeOffset createdAt = DateTimeOffset.UtcNow.AddDays(-100).AddHours(-1);
+        AnalyticsService sut = CreateSut(CreateProfile(createdAt: createdAt), [], []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(100, result.Profile.AccountAgeDays);
     }
@@ -102,9 +114,13 @@ public sealed class AnalyticsServiceTests
         double expected
     )
     {
-        var sut = CreateSut(CreateProfile(followers: followers, following: following), [], []);
+        AnalyticsService sut = CreateSut(
+            CreateProfile(followers: followers, following: following),
+            [],
+            []
+        );
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(expected, result.Profile.FollowerRatio);
     }
@@ -112,9 +128,13 @@ public sealed class AnalyticsServiceTests
     [Fact]
     public async Task ReturnsFollowersAsFollowerRatioWhenFollowingIsZero()
     {
-        var sut = CreateSut(CreateProfile(followers: 15, following: 0), [], []);
+        AnalyticsService sut = CreateSut(
+            CreateProfile(followers: 15, following: 0),
+            [],
+            []
+        );
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(15.0, result.Profile.FollowerRatio);
     }
@@ -123,12 +143,20 @@ public sealed class AnalyticsServiceTests
     [InlineData(365, 365, 365.0)]
     [InlineData(10, 365, 10.0)]
     [InlineData(5, 730, 2.5)]
-    public async Task CalculatesReposPerYearCorrectly(int publicRepos, int ageDays, double expected)
+    public async Task CalculatesReposPerYearCorrectly(
+        int publicRepos,
+        int ageDays,
+        double expected
+    )
     {
-        var createdAt = DateTimeOffset.UtcNow.AddDays(-ageDays).AddHours(-1);
-        var sut = CreateSut(CreateProfile(publicRepos: publicRepos, createdAt: createdAt), [], []);
+        DateTimeOffset createdAt = DateTimeOffset.UtcNow.AddDays(-ageDays).AddHours(-1);
+        AnalyticsService sut = CreateSut(
+            CreateProfile(publicRepos: publicRepos, createdAt: createdAt),
+            [],
+            []
+        );
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(expected, result.Profile.ReposPerYear);
     }
@@ -136,13 +164,13 @@ public sealed class AnalyticsServiceTests
     [Fact]
     public async Task ReturnsZeroReposPerYearWhenAccountAgeIsZero()
     {
-        var sut = CreateSut(
+        AnalyticsService sut = CreateSut(
             CreateProfile(publicRepos: 10, createdAt: DateTimeOffset.UtcNow),
             [],
             []
         );
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(0, result.Profile.ReposPerYear);
     }
@@ -156,9 +184,9 @@ public sealed class AnalyticsServiceTests
             CreateRepo(stars: 5),
             CreateRepo(stars: 2),
         };
-        var sut = CreateSut(CreateProfile(), repos, []);
+        AnalyticsService sut = CreateSut(CreateProfile(), repos, []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(10, result.Repositories.TotalStars);
     }
@@ -172,9 +200,9 @@ public sealed class AnalyticsServiceTests
             CreateRepo(forks: 4),
             CreateRepo(forks: 2),
         };
-        var sut = CreateSut(CreateProfile(), repos, []);
+        AnalyticsService sut = CreateSut(CreateProfile(), repos, []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(7, result.Repositories.TotalForks);
     }
@@ -188,9 +216,9 @@ public sealed class AnalyticsServiceTests
             CreateRepo(stars: 5),
             CreateRepo(stars: 4),
         };
-        var sut = CreateSut(CreateProfile(), repos, []);
+        AnalyticsService sut = CreateSut(CreateProfile(), repos, []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(4.0, result.Repositories.AverageStarsPerRepo);
     }
@@ -198,9 +226,9 @@ public sealed class AnalyticsServiceTests
     [Fact]
     public async Task ReturnsZeroAverageStarsWhenNoRepos()
     {
-        var sut = CreateSut(CreateProfile(), [], []);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(0, result.Repositories.AverageStarsPerRepo);
     }
@@ -215,12 +243,16 @@ public sealed class AnalyticsServiceTests
             CreateRepo(language: "C#"),
             CreateRepo(language: "TypeScript"),
         };
-        var sut = CreateSut(CreateProfile(), repos, []);
+        AnalyticsService sut = CreateSut(CreateProfile(), repos, []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
-        var csharp = result.Repositories.TopLanguages.Single(l => l.Name == "C#");
-        var ts = result.Repositories.TopLanguages.Single(l => l.Name == "TypeScript");
+        LanguageStat csharp = result.Repositories.TopLanguages.Single(l =>
+            l.Name == "C#"
+        );
+        LanguageStat ts = result.Repositories.TopLanguages.Single(l =>
+            l.Name == "TypeScript"
+        );
         Assert.Equal(75.0, csharp.Percent);
         Assert.Equal(25.0, ts.Percent);
     }
@@ -228,10 +260,13 @@ public sealed class AnalyticsServiceTests
     [Fact]
     public async Task LimitsTopLanguagesToFive()
     {
-        var repos = Enumerable.Range(1, 6).Select(i => CreateRepo(language: $"Lang{i}")).ToList();
-        var sut = CreateSut(CreateProfile(), repos, []);
+        var repos = Enumerable
+            .Range(1, 6)
+            .Select(i => CreateRepo(language: $"Lang{i}"))
+            .ToList();
+        AnalyticsService sut = CreateSut(CreateProfile(), repos, []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(5, result.Repositories.TopLanguages.Count);
     }
@@ -245,9 +280,9 @@ public sealed class AnalyticsServiceTests
             CreateRepo(language: "C#"),
             CreateRepo(language: "TypeScript"),
         };
-        var sut = CreateSut(CreateProfile(), repos, []);
+        AnalyticsService sut = CreateSut(CreateProfile(), repos, []);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal("C#", result.Repositories.TopLanguages[0].Name);
     }
@@ -261,9 +296,9 @@ public sealed class AnalyticsServiceTests
             CreateEvent("PullRequestEvent"),
             CreateEvent("IssuesEvent"),
         };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(3, result.Activity.TotalEvents);
     }
@@ -276,9 +311,9 @@ public sealed class AnalyticsServiceTests
             CreatePushEvent(commitCount: 3),
             CreatePushEvent(commitCount: 2),
         };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(5, result.Activity.Commits);
     }
@@ -292,9 +327,9 @@ public sealed class AnalyticsServiceTests
             CreateEvent("PullRequestEvent"),
             CreatePushEvent(commitCount: 0),
         };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(2, result.Activity.PullRequests);
     }
@@ -308,9 +343,9 @@ public sealed class AnalyticsServiceTests
             CreateEvent("PullRequestReviewEvent"),
             CreateEvent("PullRequestReviewEvent"),
         };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(3, result.Activity.Reviews);
     }
@@ -319,9 +354,9 @@ public sealed class AnalyticsServiceTests
     public async Task CountsIssueEventsCorrectly()
     {
         var events = new List<Activity> { CreateEvent("IssuesEvent") };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(1, result.Activity.Issues);
     }
@@ -337,11 +372,11 @@ public sealed class AnalyticsServiceTests
             CreateEvent("IssuesEvent", createdAt: monday),
             CreateEvent("IssuesEvent", createdAt: tuesday),
         };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
-        Assert.Single(result.ContributionGraph);
+        _ = Assert.Single(result.ContributionGraph);
         Assert.Equal(2, result.ContributionGraph[0].Count);
     }
 
@@ -355,9 +390,9 @@ public sealed class AnalyticsServiceTests
             CreateEvent("IssuesEvent", createdAt: week1),
             CreateEvent("IssuesEvent", createdAt: week2),
         };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(2, result.ContributionGraph.Count);
     }
@@ -372,9 +407,9 @@ public sealed class AnalyticsServiceTests
             CreateEvent("IssuesEvent", createdAt: week2),
             CreateEvent("IssuesEvent", createdAt: week1),
         };
-        var sut = CreateSut(CreateProfile(), [], events);
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.True(result.ContributionGraph[0].Week < result.ContributionGraph[1].Week);
     }
@@ -384,10 +419,13 @@ public sealed class AnalyticsServiceTests
     {
         // 2026-01-07 is Wednesday — week should be anchored to Monday 2026-01-05
         var wednesday = new DateTimeOffset(2026, 1, 7, 0, 0, 0, TimeSpan.Zero);
-        var events = new List<Activity> { CreateEvent("IssuesEvent", createdAt: wednesday) };
-        var sut = CreateSut(CreateProfile(), [], events);
+        var events = new List<Activity>
+        {
+            CreateEvent("IssuesEvent", createdAt: wednesday),
+        };
+        AnalyticsService sut = CreateSut(CreateProfile(), [], events);
 
-        var result = await sut.GetAnalyticsAsync("user");
+        GitHubAnalyticsDto result = await sut.GetAnalyticsAsync("user");
 
         Assert.Equal(new DateOnly(2026, 1, 5), result.ContributionGraph[0].Week);
     }
