@@ -47,6 +47,7 @@ builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<IProfileCacheService, ProfileCacheService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IAnalyticsCacheService, AnalyticsCacheService>();
+builder.Services.AddScoped<ISearchHistoryService, SearchHistoryService>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

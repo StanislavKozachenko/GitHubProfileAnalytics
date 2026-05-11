@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using GitHubProfileAnalytics.Data;
-using GitHubProfileAnalytics.Domain;
 using GitHubProfileAnalytics.DTOs.GitHub;
 using GitHubProfileAnalytics.Services.GitHub;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +11,7 @@ namespace GitHubProfileAnalytics.Controllers;
 [Authorize]
 public class GitHubController(
     IProfileCacheService profileCacheService,
-    AppDbContext context
+    ISearchHistoryService searchHistoryService
 ) : ControllerBase
 {
     [HttpGet("{username}")]
@@ -27,18 +25,20 @@ public class GitHubController(
 
         GitHubProfileDto profile = await profileCacheService.GetProfileAsync(username);
 
-        _ = context.SearchHistories.Add(
-            new SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = username,
-                SearchedAt = DateTimeOffset.UtcNow,
-            }
-        );
-
-        _ = await context.SaveChangesAsync();
+        await searchHistoryService.AddAsync(userId, username);
 
         return profile;
+    }
+
+    [HttpGet("history")]
+    public async Task<ActionResult<IReadOnlyList<SearchHistoryItemDto>>> SearchHistory(
+        int limit = 100
+    )
+    {
+        string? userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userIdClaim is null || !Guid.TryParse(userIdClaim, out Guid userId)
+            ? (ActionResult<IReadOnlyList<SearchHistoryItemDto>>)Unauthorized()
+            : (ActionResult<IReadOnlyList<SearchHistoryItemDto>>)
+                Ok(await searchHistoryService.GetHistoryAsync(userId, limit));
     }
 }
