@@ -11,6 +11,21 @@ public partial class InitialCreate : Migration
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         _ = migrationBuilder.CreateTable(
+            name: "AnalyticsCaches",
+            columns: table => new
+            {
+                Id = table.Column<Guid>(type: "uuid", nullable: false),
+                GitHubUserName = table.Column<string>(type: "text", nullable: false),
+                Data = table.Column<string>(type: "text", nullable: false),
+                CachedAt = table.Column<DateTimeOffset>(
+                    type: "timestamp with time zone",
+                    nullable: false
+                ),
+            },
+            constraints: table => _ = table.PrimaryKey("PK_AnalyticsCaches", x => x.Id)
+        );
+
+        _ = migrationBuilder.CreateTable(
             name: "ProfileCaches",
             columns: table => new
             {
@@ -22,7 +37,7 @@ public partial class InitialCreate : Migration
                     nullable: false
                 ),
             },
-            constraints: table => table.PrimaryKey("PK_ProfileCaches", x => x.Id)
+            constraints: table => _ = table.PrimaryKey("PK_ProfileCaches", x => x.Id)
         );
 
         _ = migrationBuilder.CreateTable(
@@ -37,7 +52,7 @@ public partial class InitialCreate : Migration
                     nullable: false
                 ),
             },
-            constraints: table => table.PrimaryKey("PK_SearchHistories", x => x.Id)
+            constraints: table => _ = table.PrimaryKey("PK_SearchHistories", x => x.Id)
         );
 
         _ = migrationBuilder.CreateTable(
@@ -52,7 +67,7 @@ public partial class InitialCreate : Migration
                     nullable: false
                 ),
             },
-            constraints: table => table.PrimaryKey("PK_Users", x => x.Id)
+            constraints: table => _ = table.PrimaryKey("PK_Users", x => x.Id)
         );
 
         _ = migrationBuilder.CreateTable(
@@ -98,6 +113,8 @@ public partial class InitialCreate : Migration
     /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
+        _ = migrationBuilder.DropTable(name: "AnalyticsCaches");
+
         _ = migrationBuilder.DropTable(name: "ProfileCaches");
 
         _ = migrationBuilder.DropTable(name: "RefreshTokens");
