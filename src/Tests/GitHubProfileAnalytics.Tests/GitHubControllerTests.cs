@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using GitHubProfileAnalytics.Data;
@@ -164,5 +165,71 @@ public class GitHubControllerTests
         HttpResponseMessage response = await client.GetAsync("/api/github/unknownuser");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetHistoryWithoutTokenReturns401()
+    {
+        HttpClient client = _factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/github/history?limit=100"
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetHistoryReturnsOnlyCurrentUserHistory()
+    {
+        HttpClient client1 = _factory.CreateClient();
+        client1.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken()
+        );
+
+        HttpClient client2 = _factory.CreateClient();
+        client2.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken()
+        );
+
+        _ = await client1.GetAsync("/api/github/user1profile");
+        _ = await client2.GetAsync("/api/github/user2profile");
+
+        HttpResponseMessage response = await client1.GetAsync(
+            "/api/github/history?limit=100"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        IReadOnlyList<SearchHistoryItemDto>? history =
+            await response.Content.ReadFromJsonAsync<
+                IReadOnlyList<SearchHistoryItemDto>
+            >();
+        Assert.NotNull(history);
+        _ = Assert.Single(history);
+        Assert.Equal("user1profile", history[0].GitHubUserName);
+    }
+
+    [Fact]
+    public async Task GetHistoryWithTokenReturns200()
+    {
+        HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken()
+        );
+
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/github/history?limit=100"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        IReadOnlyList<SearchHistoryItemDto>? history =
+            await response.Content.ReadFromJsonAsync<
+                IReadOnlyList<SearchHistoryItemDto>
+            >();
+        Assert.NotNull(history);
+        Assert.Empty(history);
     }
 }
