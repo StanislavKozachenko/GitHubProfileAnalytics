@@ -18,8 +18,20 @@ using Octokit;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class AnalyticsControllerTests
+public sealed class AnalyticsControllerTests(DatabaseFixture fixture)
+    : IClassFixture<DatabaseFixture>,
+        IAsyncLifetime
 {
+    public async Task InitializeAsync()
+    {
+        await fixture.TruncateAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+
     private const string JwtKey =
         "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
     private const string JwtIssuer = "test-issuer";
@@ -43,13 +55,21 @@ public sealed class AnalyticsControllerTests
 
             _ = builder.ConfigureServices(services =>
             {
-                ServiceDescriptor? dbDescriptor = services.SingleOrDefault(d =>
+                ServiceDescriptor? dbContextDescriptor = services.SingleOrDefault(d =>
+                    d.ServiceType == typeof(AppDbContext)
+                );
+                _ = services.Remove(dbContextDescriptor!);
+
+                ServiceDescriptor? dbOptionsDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(DbContextOptions<AppDbContext>)
                 );
-                _ = services.Remove(dbDescriptor!);
-                _ = services.AddDbContext<AppDbContext>(options =>
-                    options.UseInMemoryDatabase(Guid.NewGuid().ToString())
-                );
+                _ = services.Remove(dbOptionsDescriptor!);
+
+                _ = services.AddScoped(_ => new AppDbContext(
+                    new DbContextOptionsBuilder<AppDbContext>()
+                        .UseNpgsql(fixture.ConnectionString)
+                        .Options
+                ));
 
                 ServiceDescriptor? cacheDescriptor = services.SingleOrDefault(d =>
                     d.ServiceType == typeof(IAnalyticsCacheService)

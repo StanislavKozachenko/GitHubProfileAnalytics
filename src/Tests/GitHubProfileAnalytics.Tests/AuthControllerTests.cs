@@ -9,8 +9,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class AuthControllerTests
+public sealed class AuthControllerTests(DatabaseFixture fixture)
+    : IClassFixture<DatabaseFixture>,
+        IAsyncLifetime
 {
+    public async Task InitializeAsync()
+    {
+        await fixture.TruncateAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+
     private const string JwtKey =
         "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256";
     private const string JwtIssuer = "test-issuer";
@@ -44,10 +56,9 @@ public sealed class AuthControllerTests
                 );
                 _ = services.Remove(dbOptionsDescriptor!);
 
-                string dbName = Guid.NewGuid().ToString();
                 _ = services.AddScoped(_ => new AppDbContext(
                     new DbContextOptionsBuilder<AppDbContext>()
-                        .UseInMemoryDatabase(dbName)
+                        .UseNpgsql(fixture.ConnectionString)
                         .Options
                 ));
             });
