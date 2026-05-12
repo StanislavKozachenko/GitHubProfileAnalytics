@@ -34,7 +34,7 @@ public class SearchHistoryService(AppDbContext context) : ISearchHistoryService
             .Select(h => new SearchHistoryItemDto
             {
                 GitHubUserName = h.GitHubUserName,
-                SearchedAt = h.SearchedAt.UtcDateTime,
+                SearchedAt = h.SearchedAt,
             })
             .ToListAsync();
     }
