@@ -9,16 +9,27 @@ using NSubstitute;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class AnalyticsCacheServiceTests
+public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
+    : IClassFixture<DatabaseFixture>,
+        IAsyncLifetime
 {
-    private static AppDbContext CreateDbContext()
+    public async Task InitializeAsync()
     {
-        DbContextOptions<AppDbContext> options =
-            new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options;
+        await fixture.TruncateAsync();
+    }
 
-        return new AppDbContext(options);
+    public async Task DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+
+    private AppDbContext CreateDbContext()
+    {
+        return new AppDbContext(
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(fixture.ConnectionString)
+                .Options
+        );
     }
 
     private static IConfiguration CreateConfiguration(int ttlHours = 1)

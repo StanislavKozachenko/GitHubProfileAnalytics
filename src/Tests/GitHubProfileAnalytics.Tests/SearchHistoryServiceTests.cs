@@ -5,16 +5,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public class SearchHistoryServiceTests
+public sealed class SearchHistoryServiceTests(DatabaseFixture fixture)
+    : IClassFixture<DatabaseFixture>,
+        IAsyncLifetime
 {
-    private static AppDbContext CreateDbContext()
+    public async Task InitializeAsync()
     {
-        DbContextOptions<AppDbContext> options =
-            new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options;
+        await fixture.TruncateAsync();
+    }
 
-        return new AppDbContext(options);
+    public async Task DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+
+    private AppDbContext CreateDbContext()
+    {
+        return new(
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(fixture.ConnectionString)
+                .Options
+        );
     }
 
     [Fact]

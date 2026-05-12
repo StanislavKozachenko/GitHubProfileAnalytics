@@ -9,15 +9,27 @@ using Microsoft.Extensions.Configuration;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class AuthServiceTests
+public sealed class AuthServiceTests(DatabaseFixture fixture)
+    : IClassFixture<DatabaseFixture>,
+        IAsyncLifetime
 {
-    private static AppDbContext CreateDbContext()
+    public async Task InitializeAsync()
     {
-        DbContextOptions<AppDbContext> options =
+        await fixture.TruncateAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+
+    private AppDbContext CreateDbContext()
+    {
+        return new(
             new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options;
-        return new AppDbContext(options);
+                .UseNpgsql(fixture.ConnectionString)
+                .Options
+        );
     }
 
     private static IConfiguration CreateConfiguration()
