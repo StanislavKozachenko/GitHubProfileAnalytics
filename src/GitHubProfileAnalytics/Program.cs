@@ -1,5 +1,6 @@
 using System.Text;
 using GitHubProfileAnalytics.Data;
+using Scalar.AspNetCore;
 using GitHubProfileAnalytics.Exceptions;
 using GitHubProfileAnalytics.Extensions;
 using GitHubProfileAnalytics.Services.Analytics;
@@ -63,6 +64,7 @@ app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
     _ = app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 else
 {
