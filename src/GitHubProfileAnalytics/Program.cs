@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Octokit;
+using Scalar.AspNetCore;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +64,7 @@ app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
     _ = app.MapOpenApi();
+    _ = app.MapScalarApiReference();
 }
 else
 {
