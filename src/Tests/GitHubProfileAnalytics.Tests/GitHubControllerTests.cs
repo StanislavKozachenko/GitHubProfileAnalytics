@@ -79,7 +79,18 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture)
                 IProfileCacheService mockCache = Substitute.For<IProfileCacheService>();
                 _ = mockCache
                     .GetProfileAsync(Arg.Any<string>())
-                    .Returns(new GitHubProfileDto());
+                    .Returns(
+                        new GitHubProfileDto(
+                            string.Empty,
+                            string.Empty,
+                            string.Empty,
+                            string.Empty,
+                            0,
+                            0,
+                            0,
+                            default
+                        )
+                    );
                 _ = services.AddSingleton(mockCache);
 
                 _ = services.PostConfigure<JwtBearerOptions>(

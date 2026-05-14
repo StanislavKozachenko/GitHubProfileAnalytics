@@ -53,13 +53,12 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         string password = "password"
     )
     {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-            CreatedAt = DateTimeOffset.UtcNow,
-        };
+        var user = new User(
+            Guid.NewGuid(),
+            email,
+            BCrypt.Net.BCrypt.HashPassword(password),
+            DateTimeOffset.UtcNow
+        );
         _ = db.Users.Add(user);
         _ = await db.SaveChangesAsync();
         return user;
@@ -73,7 +72,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         var sut = new AuthService(db, CreateConfiguration());
 
         AuthResponse? result = await sut.RegisterAsync(
-            new RegisterRequest { Email = "existing@test.com", Password = "pass" }
+            new RegisterRequest("existing@test.com", "pass")
         );
 
         Assert.Null(result);
@@ -85,9 +84,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
 
-        _ = await sut.RegisterAsync(
-            new RegisterRequest { Email = "new@test.com", Password = "pass" }
-        );
+        _ = await sut.RegisterAsync(new RegisterRequest("new@test.com", "pass"));
 
         _ = Assert.Single(db.Users);
         Assert.Equal("new@test.com", db.Users.Single().Email);
@@ -100,9 +97,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         var sut = new AuthService(db, CreateConfiguration());
         const string plainPassword = "mysecretpassword";
 
-        _ = await sut.RegisterAsync(
-            new RegisterRequest { Email = "new@test.com", Password = plainPassword }
-        );
+        _ = await sut.RegisterAsync(new RegisterRequest("new@test.com", plainPassword));
 
         string storedHash = db.Users.Single().PasswordHash;
         Assert.NotEqual(plainPassword, storedHash);
@@ -116,7 +111,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         var sut = new AuthService(db, CreateConfiguration());
 
         AuthResponse? result = await sut.RegisterAsync(
-            new RegisterRequest { Email = "new@test.com", Password = "pass" }
+            new RegisterRequest("new@test.com", "pass")
         );
 
         Assert.NotNull(result);
@@ -131,7 +126,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         var sut = new AuthService(db, CreateConfiguration());
 
         AuthResponse? result = await sut.LoginAsync(
-            new LoginRequest { Email = "unknown@test.com", Password = "pass" }
+            new LoginRequest("unknown@test.com", "pass")
         );
 
         Assert.Null(result);
@@ -145,7 +140,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         var sut = new AuthService(db, CreateConfiguration());
 
         AuthResponse? result = await sut.LoginAsync(
-            new LoginRequest { Email = "user@test.com", Password = "wrong" }
+            new LoginRequest("user@test.com", "wrong")
         );
 
         Assert.Null(result);
@@ -159,7 +154,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         var sut = new AuthService(db, CreateConfiguration());
 
         AuthResponse? result = await sut.LoginAsync(
-            new LoginRequest { Email = "user@test.com", Password = "password" }
+            new LoginRequest("user@test.com", "password")
         );
 
         Assert.NotNull(result);
@@ -173,7 +168,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
         AuthResponse? auth = await sut.RegisterAsync(
-            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+            new RegisterRequest("a@b.com", "pass")
         );
 
         AuthResponse? result = await sut.RefreshAsync(auth!.RefreshToken);
@@ -190,7 +185,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
         AuthResponse? auth = await sut.RegisterAsync(
-            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+            new RegisterRequest("a@b.com", "pass")
         );
         string oldToken = auth!.RefreshToken;
 
@@ -218,7 +213,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
         AuthResponse? auth = await sut.RegisterAsync(
-            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+            new RegisterRequest("a@b.com", "pass")
         );
         string oldToken = auth!.RefreshToken;
 
@@ -234,16 +229,26 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         AppDbContext db = CreateDbContext();
         var sut = new AuthService(db, CreateConfiguration());
         AuthResponse? auth = await sut.RegisterAsync(
-            new RegisterRequest { Email = "a@b.com", Password = "pass" }
+            new RegisterRequest("a@b.com", "pass")
         );
 
-        RefreshToken token = await db.RefreshTokens.FirstAsync(rt =>
-            rt.Token == auth!.RefreshToken
+        string tokenValue = auth!.RefreshToken;
+        RefreshToken original = await db.RefreshTokens.FirstAsync(rt =>
+            rt.Token == tokenValue
         );
-        token.ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1);
+        _ = db.RefreshTokens.Remove(original);
+        _ = db.RefreshTokens.Add(
+            new RefreshToken(
+                original.Id,
+                original.Token,
+                original.UserId,
+                original.CreatedAt,
+                DateTimeOffset.UtcNow.AddDays(-1)
+            )
+        );
         _ = await db.SaveChangesAsync();
 
-        AuthResponse? result = await sut.RefreshAsync(auth!.RefreshToken);
+        AuthResponse? result = await sut.RefreshAsync(tokenValue);
 
         Assert.Null(result);
     }
@@ -256,7 +261,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         const string email = "user@test.com";
 
         AuthResponse? result = await sut.RegisterAsync(
-            new RegisterRequest { Email = email, Password = "pass" }
+            new RegisterRequest(email, "pass")
         );
 
         JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(
@@ -272,7 +277,7 @@ public sealed class AuthServiceTests(DatabaseFixture fixture)
         var sut = new AuthService(db, CreateConfiguration());
 
         AuthResponse? result = await sut.RegisterAsync(
-            new RegisterRequest { Email = "user@test.com", Password = "pass" }
+            new RegisterRequest("user@test.com", "pass")
         );
 
         string userId = db.Users.Single().Id.ToString();

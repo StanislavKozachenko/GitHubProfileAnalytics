@@ -79,7 +79,14 @@ public sealed class AnalyticsControllerTests(DatabaseFixture fixture)
                     Substitute.For<IAnalyticsCacheService>();
                 _ = mockCache
                     .GetAnalyticsAsync(Arg.Any<string>())
-                    .Returns(new GitHubAnalyticsDto());
+                    .Returns(
+                        new GitHubAnalyticsDto(
+                            new ProfileMetrics(0, 0, 0),
+                            new RepositoryMetrics(0, 0, 0, []),
+                            new ActivityMetrics(0, 0, 0, 0, 0),
+                            []
+                        )
+                    );
                 _ = services.AddSingleton(mockCache);
 
                 _ = services.PostConfigure<JwtBearerOptions>(
