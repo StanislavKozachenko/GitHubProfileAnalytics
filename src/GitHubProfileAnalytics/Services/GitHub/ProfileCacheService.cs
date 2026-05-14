@@ -38,23 +38,19 @@ public class ProfileCacheService(
             p.GitHubUserName == username
         );
 
-        if (entry is null)
+        if (entry is not null)
         {
-            _ = context.ProfileCaches.Add(
-                new ProfileCache
-                {
-                    Id = Guid.NewGuid(),
-                    GitHubUserName = username,
-                    Data = JsonSerializer.Serialize(profile),
-                    CachedAt = DateTimeOffset.UtcNow,
-                }
-            );
+            _ = context.ProfileCaches.Remove(entry);
         }
-        else
-        {
-            entry.Data = JsonSerializer.Serialize(profile);
-            entry.CachedAt = DateTimeOffset.UtcNow;
-        }
+
+        _ = context.ProfileCaches.Add(
+            new ProfileCache(
+                Guid.NewGuid(),
+                username,
+                JsonSerializer.Serialize(profile),
+                DateTimeOffset.UtcNow
+            )
+        );
 
         _ = await context.SaveChangesAsync();
         return profile;
