@@ -1,10 +1,16 @@
 namespace GitHubProfileAnalytics.DTOs.Analytics;
 
-public class ActivityMetrics
+public class ActivityMetrics(
+    int totalEvents,
+    int commits,
+    int pullRequests,
+    int reviews,
+    int issues
+)
 {
-    public int TotalEvents { get; set; }
-    public int Commits { get; set; }
-    public int PullRequests { get; set; }
-    public int Reviews { get; set; }
-    public int Issues { get; set; }
+    public int TotalEvents { get; init; } = totalEvents;
+    public int Commits { get; init; } = commits;
+    public int PullRequests { get; init; } = pullRequests;
+    public int Reviews { get; init; } = reviews;
+    public int Issues { get; init; } = issues;
 }

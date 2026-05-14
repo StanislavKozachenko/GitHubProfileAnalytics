@@ -1,9 +1,14 @@
 namespace GitHubProfileAnalytics.Domain;
 
-public class AnalyticsCache
+public class AnalyticsCache(
+    Guid id,
+    string gitHubUserName,
+    string data,
+    DateTimeOffset cachedAt
+)
 {
-    public Guid Id { get; set; }
-    public string GitHubUserName { get; set; } = string.Empty;
-    public string Data { get; set; } = string.Empty;
-    public DateTimeOffset CachedAt { get; set; }
+    public Guid Id { get; init; } = id;
+    public string GitHubUserName { get; init; } = gitHubUserName;
+    public string Data { get; init; } = data;
+    public DateTimeOffset CachedAt { get; init; } = cachedAt;
 }

@@ -44,6 +44,16 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
             .Build();
     }
 
+    private static GitHubAnalyticsDto EmptyAnalyticsDto()
+    {
+        return new(
+            new ProfileMetrics(0, 0, 0),
+            new RepositoryMetrics(0, 0, 0, []),
+            new ActivityMetrics(0, 0, 0, 0, 0),
+            []
+        );
+    }
+
     [Fact]
     public async Task ReturnsCachedAnalyticsWithoutCallingAnalyticsService()
     {
@@ -51,13 +61,12 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
         IAnalyticsService analyticsService = Substitute.For<IAnalyticsService>();
         IConfiguration config = CreateConfiguration();
 
-        var cached = new AnalyticsCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = JsonSerializer.Serialize(new GitHubAnalyticsDto()),
-            CachedAt = DateTimeOffset.UtcNow,
-        };
+        var cached = new AnalyticsCache(
+            Guid.NewGuid(),
+            "testuser",
+            JsonSerializer.Serialize(EmptyAnalyticsDto()),
+            DateTimeOffset.UtcNow
+        );
 
         _ = db.AnalyticsCaches.Add(cached);
         _ = await db.SaveChangesAsync();
@@ -76,7 +85,7 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
         AppDbContext db = CreateDbContext();
         IAnalyticsService analyticsService = Substitute.For<IAnalyticsService>();
         IConfiguration config = CreateConfiguration();
-        var analytics = new GitHubAnalyticsDto();
+        GitHubAnalyticsDto analytics = EmptyAnalyticsDto();
 
         _ = analyticsService.GetAnalyticsAsync("testuser").Returns(analytics);
 
@@ -96,20 +105,17 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
         IAnalyticsService analyticsService = Substitute.For<IAnalyticsService>();
         IConfiguration config = CreateConfiguration(ttlHours: 1);
 
-        var expired = new AnalyticsCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = JsonSerializer.Serialize(new GitHubAnalyticsDto()),
-            CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
-        };
-
-        _ = db.AnalyticsCaches.Add(expired);
+        _ = db.AnalyticsCaches.Add(
+            new AnalyticsCache(
+                Guid.NewGuid(),
+                "testuser",
+                JsonSerializer.Serialize(EmptyAnalyticsDto()),
+                DateTimeOffset.UtcNow.AddHours(-2)
+            )
+        );
         _ = await db.SaveChangesAsync();
 
-        _ = analyticsService
-            .GetAnalyticsAsync("testuser")
-            .Returns(new GitHubAnalyticsDto());
+        _ = analyticsService.GetAnalyticsAsync("testuser").Returns(EmptyAnalyticsDto());
 
         var sut = new AnalyticsCacheService(db, analyticsService, config);
 
@@ -126,22 +132,19 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
         IAnalyticsService analyticsService = Substitute.For<IAnalyticsService>();
         IConfiguration config = CreateConfiguration(ttlHours: 1);
 
-        var expired = new AnalyticsCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = JsonSerializer.Serialize(new GitHubAnalyticsDto()),
-            CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
-        };
+        var expired = new AnalyticsCache(
+            Guid.NewGuid(),
+            "testuser",
+            JsonSerializer.Serialize(EmptyAnalyticsDto()),
+            DateTimeOffset.UtcNow.AddHours(-2)
+        );
 
         _ = db.AnalyticsCaches.Add(expired);
         _ = await db.SaveChangesAsync();
 
         DateTimeOffset oldCachedAt = expired.CachedAt;
 
-        _ = analyticsService
-            .GetAnalyticsAsync("testuser")
-            .Returns(new GitHubAnalyticsDto());
+        _ = analyticsService.GetAnalyticsAsync("testuser").Returns(EmptyAnalyticsDto());
 
         var sut = new AnalyticsCacheService(db, analyticsService, config);
 
@@ -160,13 +163,12 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
         IAnalyticsService analyticsService = Substitute.For<IAnalyticsService>();
         IConfiguration config = CreateConfiguration();
 
-        var cached = new AnalyticsCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = "corruptedstring",
-            CachedAt = DateTimeOffset.UtcNow,
-        };
+        var cached = new AnalyticsCache(
+            Guid.NewGuid(),
+            "testuser",
+            "corruptedstring",
+            DateTimeOffset.UtcNow
+        );
 
         _ = db.AnalyticsCaches.Add(cached);
         _ = await db.SaveChangesAsync();
@@ -185,13 +187,7 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
         IAnalyticsService analyticsService = Substitute.For<IAnalyticsService>();
 
         _ = db.AnalyticsCaches.Add(
-            new AnalyticsCache
-            {
-                Id = Guid.NewGuid(),
-                GitHubUserName = "testuser",
-                Data = "null",
-                CachedAt = DateTimeOffset.UtcNow,
-            }
+            new AnalyticsCache(Guid.NewGuid(), "testuser", "null", DateTimeOffset.UtcNow)
         );
         _ = await db.SaveChangesAsync();
 
@@ -211,13 +207,12 @@ public sealed class AnalyticsCacheServiceTests(DatabaseFixture fixture)
         IAnalyticsService analyticsService = Substitute.For<IAnalyticsService>();
 
         _ = db.AnalyticsCaches.Add(
-            new AnalyticsCache
-            {
-                Id = Guid.NewGuid(),
-                GitHubUserName = "testuser",
-                Data = JsonSerializer.Serialize(new GitHubAnalyticsDto()),
-                CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
-            }
+            new AnalyticsCache(
+                Guid.NewGuid(),
+                "testuser",
+                JsonSerializer.Serialize(EmptyAnalyticsDto()),
+                DateTimeOffset.UtcNow.AddHours(-2)
+            )
         );
         _ = await db.SaveChangesAsync();
 

@@ -1,11 +1,22 @@
 namespace GitHubProfileAnalytics.Domain;
 
-public class RefreshToken
+public class RefreshToken(
+    Guid id,
+    string token,
+    Guid userId,
+    DateTimeOffset createdAt,
+    DateTimeOffset expiresAt
+)
 {
-    public Guid Id { get; set; }
-    public string Token { get; set; } = string.Empty;
-    public DateTimeOffset ExpiresAt { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? RevokedAt { get; set; }
-    public Guid UserId { get; set; }
+    public Guid Id { get; init; } = id;
+    public string Token { get; init; } = token;
+    public Guid UserId { get; init; } = userId;
+    public DateTimeOffset CreatedAt { get; init; } = createdAt;
+    public DateTimeOffset ExpiresAt { get; init; } = expiresAt;
+    public DateTimeOffset? RevokedAt { get; private set; }
+
+    public void Revoke()
+    {
+        RevokedAt = DateTimeOffset.UtcNow;
+    }
 }
