@@ -9,9 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class AuthControllerTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class AuthControllerTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {

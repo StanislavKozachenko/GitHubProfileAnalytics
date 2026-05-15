@@ -40,23 +40,19 @@ public class AnalyticsCacheService(
             p.GitHubUserName == username
         );
 
-        if (entry is null)
+        if (entry is not null)
         {
-            _ = context.AnalyticsCaches.Add(
-                new AnalyticsCache
-                {
-                    Id = Guid.NewGuid(),
-                    GitHubUserName = username,
-                    Data = JsonSerializer.Serialize(profileAnalytics),
-                    CachedAt = DateTimeOffset.UtcNow,
-                }
-            );
+            _ = context.AnalyticsCaches.Remove(entry);
         }
-        else
-        {
-            entry.Data = JsonSerializer.Serialize(profileAnalytics);
-            entry.CachedAt = DateTimeOffset.UtcNow;
-        }
+
+        _ = context.AnalyticsCaches.Add(
+            new AnalyticsCache(
+                Guid.NewGuid(),
+                username,
+                JsonSerializer.Serialize(profileAnalytics),
+                DateTimeOffset.UtcNow
+            )
+        );
 
         _ = await context.SaveChangesAsync();
         return profileAnalytics;

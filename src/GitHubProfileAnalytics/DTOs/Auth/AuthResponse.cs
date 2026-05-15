@@ -1,7 +1,7 @@
 namespace GitHubProfileAnalytics.DTOs.Auth;
 
-public class AuthResponse
+public class AuthResponse(string accessToken, string refreshToken)
 {
-    public string AccessToken { get; set; } = string.Empty;
-    public string RefreshToken { get; set; } = string.Empty;
+    public string AccessToken { get; init; } = accessToken;
+    public string RefreshToken { get; init; } = refreshToken;
 }

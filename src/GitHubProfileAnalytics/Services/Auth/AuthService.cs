@@ -22,13 +22,12 @@ public class AuthService(AppDbContext context, IConfiguration configuration)
             return null;
         }
 
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            CreatedAt = DateTimeOffset.UtcNow,
-        };
+        var user = new User(
+            Guid.NewGuid(),
+            request.Email,
+            BCrypt.Net.BCrypt.HashPassword(request.Password),
+            DateTimeOffset.UtcNow
+        );
 
         _ = context.Users.Add(user);
         _ = await context.SaveChangesAsync();
@@ -67,7 +66,7 @@ public class AuthService(AppDbContext context, IConfiguration configuration)
             return null;
         }
 
-        refreshToken.RevokedAt = DateTimeOffset.UtcNow;
+        refreshToken.Revoke();
         _ = await context.SaveChangesAsync();
 
         return await GenerateTokenPairAsync(user);
@@ -95,22 +94,20 @@ public class AuthService(AppDbContext context, IConfiguration configuration)
             signingCredentials: credentials
         );
 
-        var refreshToken = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-            UserId = user.Id,
-            CreatedAt = DateTimeOffset.UtcNow,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
-        };
+        var refreshToken = new RefreshToken(
+            Guid.NewGuid(),
+            Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            user.Id,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(7)
+        );
 
         _ = context.RefreshTokens.Add(refreshToken);
         _ = await context.SaveChangesAsync();
 
-        return new AuthResponse
-        {
-            AccessToken = new JwtSecurityTokenHandler().WriteToken(jwtToken),
-            RefreshToken = refreshToken.Token,
-        };
+        return new AuthResponse(
+            new JwtSecurityTokenHandler().WriteToken(jwtToken),
+            refreshToken.Token
+        );
     }
 }

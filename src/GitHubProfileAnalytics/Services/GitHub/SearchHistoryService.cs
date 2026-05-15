@@ -10,13 +10,12 @@ public class SearchHistoryService(AppDbContext context) : ISearchHistoryService
     public async Task AddAsync(Guid userId, string gitHubUserName)
     {
         _ = context.SearchHistories.Add(
-            new SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = gitHubUserName,
-                SearchedAt = DateTimeOffset.UtcNow,
-            }
+            new SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                gitHubUserName,
+                DateTimeOffset.UtcNow
+            )
         );
 
         _ = await context.SaveChangesAsync();
@@ -31,11 +30,7 @@ public class SearchHistoryService(AppDbContext context) : ISearchHistoryService
             .SearchHistories.Where(h => h.UserId == userId)
             .OrderByDescending(h => h.SearchedAt)
             .Take(limit)
-            .Select(h => new SearchHistoryItemDto
-            {
-                GitHubUserName = h.GitHubUserName,
-                SearchedAt = h.SearchedAt,
-            })
+            .Select(h => new SearchHistoryItemDto(h.GitHubUserName, h.SearchedAt))
             .ToListAsync();
     }
 }

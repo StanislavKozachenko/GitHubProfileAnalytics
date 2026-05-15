@@ -19,9 +19,9 @@ using Octokit;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class GitHubControllerTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {
@@ -79,7 +79,18 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture)
                 IProfileCacheService mockCache = Substitute.For<IProfileCacheService>();
                 _ = mockCache
                     .GetProfileAsync(Arg.Any<string>())
-                    .Returns(new GitHubProfileDto());
+                    .Returns(
+                        new GitHubProfileDto(
+                            string.Empty,
+                            string.Empty,
+                            string.Empty,
+                            string.Empty,
+                            0,
+                            0,
+                            0,
+                            default
+                        )
+                    );
                 _ = services.AddSingleton(mockCache);
 
                 _ = services.PostConfigure<JwtBearerOptions>(

@@ -9,9 +9,9 @@ using NSubstitute;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class ProfileCacheServiceTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {
@@ -44,6 +44,26 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
             .Build();
     }
 
+    private static GitHubProfileDto ProfileDto(
+        string login = "",
+        string name = "",
+        int followers = 0,
+        int following = 0,
+        int publicRepos = 0
+    )
+    {
+        return new(
+            login,
+            name,
+            string.Empty,
+            string.Empty,
+            publicRepos,
+            followers,
+            following,
+            default
+        );
+    }
+
     [Fact]
     public async Task ReturnsCachedProfileWithoutCallingGitHub()
     {
@@ -51,13 +71,12 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
         IGitHubService gitHubService = Substitute.For<IGitHubService>();
         IConfiguration config = CreateConfiguration();
 
-        var cached = new ProfileCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = JsonSerializer.Serialize(new GitHubProfileDto { Login = "testuser" }),
-            CachedAt = DateTimeOffset.UtcNow,
-        };
+        var cached = new ProfileCache(
+            Guid.NewGuid(),
+            "testuser",
+            JsonSerializer.Serialize(ProfileDto(login: "testuser")),
+            DateTimeOffset.UtcNow
+        );
 
         _ = db.ProfileCaches.Add(cached);
         _ = await db.SaveChangesAsync();
@@ -76,12 +95,11 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
         AppDbContext db = CreateDbContext();
         IGitHubService gitHubService = Substitute.For<IGitHubService>();
         IConfiguration config = CreateConfiguration();
-        var profile = new GitHubProfileDto
-        {
-            Login = "testuser",
-            Name = "Test User",
-            Followers = 7,
-        };
+        GitHubProfileDto profile = ProfileDto(
+            login: "testuser",
+            name: "Test User",
+            followers: 7
+        );
 
         _ = gitHubService.GetProfileAsync("testuser").Returns(profile);
 
@@ -102,20 +120,19 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
         IGitHubService gitHubService = Substitute.For<IGitHubService>();
         IConfiguration config = CreateConfiguration(ttlHours: 1);
 
-        var expired = new ProfileCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = JsonSerializer.Serialize(new GitHubProfileDto { Login = "testuser" }),
-            CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
-        };
-
-        _ = db.ProfileCaches.Add(expired);
+        _ = db.ProfileCaches.Add(
+            new ProfileCache(
+                Guid.NewGuid(),
+                "testuser",
+                JsonSerializer.Serialize(ProfileDto(login: "testuser")),
+                DateTimeOffset.UtcNow.AddHours(-2)
+            )
+        );
         _ = await db.SaveChangesAsync();
 
         _ = gitHubService
             .GetProfileAsync("testuser")
-            .Returns(new GitHubProfileDto { Login = "testuser" });
+            .Returns(ProfileDto(login: "testuser"));
 
         var sut = new ProfileCacheService(db, gitHubService, config);
 
@@ -132,13 +149,12 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
         IGitHubService gitHubService = Substitute.For<IGitHubService>();
         IConfiguration config = CreateConfiguration(ttlHours: 1);
 
-        var expired = new ProfileCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = JsonSerializer.Serialize(new GitHubProfileDto { Login = "testuser" }),
-            CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
-        };
+        var expired = new ProfileCache(
+            Guid.NewGuid(),
+            "testuser",
+            JsonSerializer.Serialize(ProfileDto(login: "testuser")),
+            DateTimeOffset.UtcNow.AddHours(-2)
+        );
 
         _ = db.ProfileCaches.Add(expired);
         _ = await db.SaveChangesAsync();
@@ -147,7 +163,7 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
 
         _ = gitHubService
             .GetProfileAsync("testuser")
-            .Returns(new GitHubProfileDto { Login = "testuser" });
+            .Returns(ProfileDto(login: "testuser"));
 
         var sut = new ProfileCacheService(db, gitHubService, config);
 
@@ -166,13 +182,12 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
         IGitHubService gitHubService = Substitute.For<IGitHubService>();
         IConfiguration config = CreateConfiguration();
 
-        var cached = new ProfileCache
-        {
-            Id = Guid.NewGuid(),
-            GitHubUserName = "testuser",
-            Data = "corruptedstring",
-            CachedAt = DateTimeOffset.UtcNow,
-        };
+        var cached = new ProfileCache(
+            Guid.NewGuid(),
+            "testuser",
+            "corruptedstring",
+            DateTimeOffset.UtcNow
+        );
 
         _ = db.ProfileCaches.Add(cached);
         _ = await db.SaveChangesAsync();
@@ -192,13 +207,7 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
         IConfiguration config = CreateConfiguration();
 
         _ = db.ProfileCaches.Add(
-            new ProfileCache
-            {
-                Id = Guid.NewGuid(),
-                GitHubUserName = "testuser",
-                Data = "null",
-                CachedAt = DateTimeOffset.UtcNow,
-            }
+            new ProfileCache(Guid.NewGuid(), "testuser", "null", DateTimeOffset.UtcNow)
         );
         _ = await db.SaveChangesAsync();
 
@@ -218,23 +227,21 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
         IGitHubService gitHubService = Substitute.For<IGitHubService>();
         IConfiguration config = CreateConfiguration();
 
-        var profile = new GitHubProfileDto
-        {
-            Login = "testuser",
-            Name = "Test User",
-            Followers = 100,
-            Following = 50,
-            PublicRepos = 10,
-        };
+        GitHubProfileDto profile = ProfileDto(
+            login: "testuser",
+            name: "Test User",
+            followers: 100,
+            following: 50,
+            publicRepos: 10
+        );
 
         _ = db.ProfileCaches.Add(
-            new ProfileCache
-            {
-                Id = Guid.NewGuid(),
-                GitHubUserName = "testuser",
-                Data = JsonSerializer.Serialize(profile),
-                CachedAt = DateTimeOffset.UtcNow,
-            }
+            new ProfileCache(
+                Guid.NewGuid(),
+                "testuser",
+                JsonSerializer.Serialize(profile),
+                DateTimeOffset.UtcNow
+            )
         );
         _ = await db.SaveChangesAsync();
 
@@ -256,15 +263,12 @@ public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
 
         // Entry is 2h old — fresh only if TTL >= 2h
         _ = db.ProfileCaches.Add(
-            new ProfileCache
-            {
-                Id = Guid.NewGuid(),
-                GitHubUserName = "testuser",
-                Data = JsonSerializer.Serialize(
-                    new GitHubProfileDto { Login = "testuser", Name = "Cached" }
-                ),
-                CachedAt = DateTimeOffset.UtcNow.AddHours(-2),
-            }
+            new ProfileCache(
+                Guid.NewGuid(),
+                "testuser",
+                JsonSerializer.Serialize(ProfileDto(login: "testuser", name: "Cached")),
+                DateTimeOffset.UtcNow.AddHours(-2)
+            )
         );
         _ = await db.SaveChangesAsync();
 

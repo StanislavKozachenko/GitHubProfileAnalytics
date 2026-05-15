@@ -84,13 +84,16 @@ public sealed class AnalyticsServiceTests
         DateTimeOffset? createdAt = null
     )
     {
-        return new()
-        {
-            Followers = followers,
-            Following = following,
-            PublicRepos = publicRepos,
-            CreatedAt = createdAt ?? DateTimeOffset.UtcNow.AddDays(-365).AddHours(-1),
-        };
+        return new GitHubProfileDto(
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            publicRepos,
+            followers,
+            following,
+            createdAt ?? DateTimeOffset.UtcNow.AddDays(-365).AddHours(-1)
+        );
     }
 
     [Fact]

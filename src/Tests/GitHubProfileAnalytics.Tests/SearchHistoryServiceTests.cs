@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class SearchHistoryServiceTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class SearchHistoryServiceTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {
@@ -72,27 +72,24 @@ public sealed class SearchHistoryServiceTests(DatabaseFixture fixture)
 
         Guid userId = Guid.NewGuid();
         db.SearchHistories.AddRange(
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "first",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-1),
-            },
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "second",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-2),
-            },
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "third",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-3),
-            }
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "first",
+                DateTimeOffset.UtcNow.AddHours(-1)
+            ),
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "second",
+                DateTimeOffset.UtcNow.AddHours(-2)
+            ),
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "third",
+                DateTimeOffset.UtcNow.AddHours(-3)
+            )
         );
         _ = await db.SaveChangesAsync();
 
@@ -115,41 +112,36 @@ public sealed class SearchHistoryServiceTests(DatabaseFixture fixture)
 
         Guid userId = Guid.NewGuid();
         db.SearchHistories.AddRange(
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "first",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-1),
-            },
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "second",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-2),
-            },
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "third",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-3),
-            },
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "fourth",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-4),
-            },
-            new Domain.SearchHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GitHubUserName = "fifth",
-                SearchedAt = DateTimeOffset.UtcNow.AddHours(-5),
-            }
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "first",
+                DateTimeOffset.UtcNow.AddHours(-1)
+            ),
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "second",
+                DateTimeOffset.UtcNow.AddHours(-2)
+            ),
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "third",
+                DateTimeOffset.UtcNow.AddHours(-3)
+            ),
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "fourth",
+                DateTimeOffset.UtcNow.AddHours(-4)
+            ),
+            new Domain.SearchHistory(
+                Guid.NewGuid(),
+                userId,
+                "fifth",
+                DateTimeOffset.UtcNow.AddHours(-5)
+            )
         );
         _ = await db.SaveChangesAsync();
 

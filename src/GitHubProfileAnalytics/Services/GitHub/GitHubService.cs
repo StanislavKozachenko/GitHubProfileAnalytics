@@ -9,16 +9,15 @@ public class GitHubService(IGitHubClient client) : IGitHubService
     {
         User user = await client.User.Get(username);
 
-        return new GitHubProfileDto
-        {
-            Login = user.Login,
-            Name = user.Name,
-            AvatarUrl = user.AvatarUrl,
-            Bio = user.Bio,
-            PublicRepos = user.PublicRepos,
-            Followers = user.Followers,
-            Following = user.Following,
-            CreatedAt = user.CreatedAt,
-        };
+        return new GitHubProfileDto(
+            user.Login,
+            user.Name,
+            user.AvatarUrl,
+            user.Bio,
+            user.PublicRepos,
+            user.Followers,
+            user.Following,
+            user.CreatedAt
+        );
     }
 }

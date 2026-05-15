@@ -1,7 +1,7 @@
 namespace GitHubProfileAnalytics.DTOs.Analytics;
 
-public class LanguageStat
+public class LanguageStat(string name, double percent)
 {
-    public string Name { get; set; } = string.Empty;
-    public double Percent { get; set; }
+    public string Name { get; init; } = name;
+    public double Percent { get; init; } = percent;
 }
