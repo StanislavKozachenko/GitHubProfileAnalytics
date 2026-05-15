@@ -19,9 +19,9 @@ using Octokit;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class GitHubControllerTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {

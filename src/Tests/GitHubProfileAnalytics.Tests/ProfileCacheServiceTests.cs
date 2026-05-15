@@ -9,9 +9,9 @@ using NSubstitute;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class ProfileCacheServiceTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class ProfileCacheServiceTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {

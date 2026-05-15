@@ -1,6 +1,7 @@
 {
   "stryker-config": {
     "mutation-level": "Standard",
+    "test-runner-options": "--filter Category!=Integration",
     "mutate": [
       "!**/Migrations/**",
       "!**/Domain/**",

@@ -4,6 +4,7 @@ using Testcontainers.PostgreSql;
 
 namespace GitHubProfileAnalytics.Tests;
 
+[Trait("Category", "Integration")]
 public sealed class MigrationTests
 {
     [Fact]
