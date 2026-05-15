@@ -9,9 +9,9 @@ using Microsoft.Extensions.Configuration;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class AuthServiceTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class AuthServiceTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {

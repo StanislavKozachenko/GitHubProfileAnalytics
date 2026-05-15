@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GitHubProfileAnalytics.Tests;
 
-public sealed class SearchHistoryServiceTests(DatabaseFixture fixture)
-    : IClassFixture<DatabaseFixture>,
-        IAsyncLifetime
+[Trait("Category", "Integration")]
+[Collection("Database")]
+public sealed class SearchHistoryServiceTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     public async Task InitializeAsync()
     {
