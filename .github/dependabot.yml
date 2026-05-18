@@ -9,6 +9,17 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    groups:
+      efcore:
+        patterns:
+          - "Microsoft.EntityFrameworkCore*"
+          - "Npgsql.EntityFrameworkCore.*"
+      aspnetcore:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+      xunit:
+        patterns:
+          - "xunit*"
 
   - package-ecosystem: github-actions
     directory: "/"
