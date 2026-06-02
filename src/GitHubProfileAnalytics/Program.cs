@@ -48,6 +48,7 @@ builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<IProfileCacheService, ProfileCacheService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IAnalyticsCacheService, AnalyticsCacheService>();
+builder.Services.AddScoped<IComparisonService, ComparisonService>();
 builder.Services.AddScoped<ISearchHistoryService, SearchHistoryService>();
 
 builder.Services.AddProblemDetails();
