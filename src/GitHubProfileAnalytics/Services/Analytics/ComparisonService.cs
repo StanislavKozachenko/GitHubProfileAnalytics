@@ -16,22 +16,31 @@ public class ComparisonService(IAnalyticsCacheService analyticsCacheService)
         string username2
     )
     {
-        GitHubAnalyticsDto[] results = await Task.WhenAll(
-            analyticsCacheService.GetAnalyticsAsync(username1),
-            analyticsCacheService.GetAnalyticsAsync(username2)
+        GitHubAnalyticsDto first = await analyticsCacheService.GetAnalyticsAsync(
+            username1
+        );
+        GitHubAnalyticsDto second = await analyticsCacheService.GetAnalyticsAsync(
+            username2
         );
 
-        GitHubAnalyticsDto first = results[0];
-        GitHubAnalyticsDto second = results[1];
-
-        return new ProfileComparisonDto(
-            username1,
-            first,
-            CalculateScore(first, second),
-            username2,
-            second,
-            CalculateScore(second, first)
-        );
+        return new ProfileComparisonDto([
+            new ComparisonEntryDto(
+                username1,
+                CalculateScore(first, second),
+                first.Profile,
+                first.Repositories,
+                first.Activity,
+                first.ContributionGraph
+            ),
+            new ComparisonEntryDto(
+                username2,
+                CalculateScore(second, first),
+                second.Profile,
+                second.Repositories,
+                second.Activity,
+                second.ContributionGraph
+            ),
+        ]);
     }
 
     private static double CalculateScore(

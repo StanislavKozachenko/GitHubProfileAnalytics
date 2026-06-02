@@ -109,14 +109,24 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifet
                 _ = mockComparison
                     .CompareAsync(Arg.Any<string>(), Arg.Any<string>())
                     .Returns(
-                        new ProfileComparisonDto(
-                            "user1",
-                            emptyAnalytics,
-                            50.0,
-                            "user2",
-                            emptyAnalytics,
-                            50.0
-                        )
+                        new ProfileComparisonDto([
+                            new ComparisonEntryDto(
+                                "user1",
+                                50.0,
+                                emptyAnalytics.Profile,
+                                emptyAnalytics.Repositories,
+                                emptyAnalytics.Activity,
+                                emptyAnalytics.ContributionGraph
+                            ),
+                            new ComparisonEntryDto(
+                                "user2",
+                                50.0,
+                                emptyAnalytics.Profile,
+                                emptyAnalytics.Repositories,
+                                emptyAnalytics.Activity,
+                                emptyAnalytics.ContributionGraph
+                            ),
+                        ])
                     );
                 _ = services.AddSingleton(mockComparison);
 
@@ -329,7 +339,8 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifet
         ProfileComparisonDto? result =
             await response.Content.ReadFromJsonAsync<ProfileComparisonDto>();
         Assert.NotNull(result);
-        Assert.Equal("user1", result.FirstUsername);
-        Assert.Equal("user2", result.SecondUsername);
+        Assert.Equal(2, result.Profiles.Count);
+        Assert.Equal("user1", result.Profiles[0].Username);
+        Assert.Equal("user2", result.Profiles[1].Username);
     }
 }

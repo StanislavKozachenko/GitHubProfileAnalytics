@@ -49,8 +49,8 @@ public sealed class ComparisonServiceTests
 
         ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
 
-        Assert.Equal(100.0, result.FirstScore);
-        Assert.Equal(100.0, result.SecondScore);
+        Assert.Equal(100.0, result.Profiles[0].Score);
+        Assert.Equal(100.0, result.Profiles[1].Score);
     }
 
     [Fact]
@@ -69,8 +69,8 @@ public sealed class ComparisonServiceTests
 
         ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
 
-        Assert.Equal(100.0, result.FirstScore);
-        Assert.Equal(0.0, result.SecondScore);
+        Assert.Equal(100.0, result.Profiles[0].Score);
+        Assert.Equal(0.0, result.Profiles[1].Score);
     }
 
     [Fact]
@@ -81,22 +81,21 @@ public sealed class ComparisonServiceTests
 
         ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
 
-        Assert.Equal(0.0, result.FirstScore);
-        Assert.Equal(0.0, result.SecondScore);
+        Assert.Equal(0.0, result.Profiles[0].Score);
+        Assert.Equal(0.0, result.Profiles[1].Score);
     }
 
     [Fact]
     public async Task ScoreReflectsWeightedMetrics()
     {
-        // user1 wins only stars (25%), everything else is 0
         GitHubAnalyticsDto user1 = CreateAnalytics(totalStars: 1000);
         GitHubAnalyticsDto user2 = CreateAnalytics();
         ComparisonService sut = CreateSut(user1, user2);
 
         ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
 
-        Assert.Equal(25.0, result.FirstScore);
-        Assert.Equal(0.0, result.SecondScore);
+        Assert.Equal(25.0, result.Profiles[0].Score);
+        Assert.Equal(0.0, result.Profiles[1].Score);
     }
 
     [Fact]
@@ -107,7 +106,7 @@ public sealed class ComparisonServiceTests
 
         ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
 
-        Assert.Equal("user1", result.FirstUsername);
-        Assert.Equal("user2", result.SecondUsername);
+        Assert.Equal("user1", result.Profiles[0].Username);
+        Assert.Equal("user2", result.Profiles[1].Username);
     }
 }
