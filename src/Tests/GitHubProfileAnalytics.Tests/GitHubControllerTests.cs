@@ -5,7 +5,9 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using GitHubProfileAnalytics.Data;
+using GitHubProfileAnalytics.DTOs.Analytics;
 using GitHubProfileAnalytics.DTOs.GitHub;
+using GitHubProfileAnalytics.Services.Analytics;
 using GitHubProfileAnalytics.Services.GitHub;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -92,6 +94,41 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifet
                         )
                     );
                 _ = services.AddSingleton(mockCache);
+
+                ServiceDescriptor? comparisonDescriptor = services.SingleOrDefault(d =>
+                    d.ServiceType == typeof(IComparisonService)
+                );
+                _ = services.Remove(comparisonDescriptor!);
+                IComparisonService mockComparison = Substitute.For<IComparisonService>();
+                GitHubAnalyticsDto emptyAnalytics = new(
+                    new ProfileMetrics(0, 0, 0),
+                    new RepositoryMetrics(0, 0, 0, []),
+                    new ActivityMetrics(0, 0, 0, 0, 0),
+                    []
+                );
+                _ = mockComparison
+                    .CompareAsync(Arg.Any<string>(), Arg.Any<string>())
+                    .Returns(
+                        new ProfileComparisonDto([
+                            new ComparisonEntryDto(
+                                "user1",
+                                50.0,
+                                emptyAnalytics.Profile,
+                                emptyAnalytics.Repositories,
+                                emptyAnalytics.Activity,
+                                emptyAnalytics.ContributionGraph
+                            ),
+                            new ComparisonEntryDto(
+                                "user2",
+                                50.0,
+                                emptyAnalytics.Profile,
+                                emptyAnalytics.Repositories,
+                                emptyAnalytics.Activity,
+                                emptyAnalytics.ContributionGraph
+                            ),
+                        ])
+                    );
+                _ = services.AddSingleton(mockComparison);
 
                 _ = services.PostConfigure<JwtBearerOptions>(
                     JwtBearerDefaults.AuthenticationScheme,
@@ -253,5 +290,57 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifet
             >();
         Assert.NotNull(history);
         Assert.Empty(history);
+    }
+
+    [Fact]
+    public async Task CompareWithoutTokenReturns401()
+    {
+        HttpClient client = _factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/github/compare?users=user1,user2"
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("user1")]
+    [InlineData("user1,user2,user3")]
+    public async Task CompareWithInvalidUsernameCountReturns400(string users)
+    {
+        HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken()
+        );
+
+        HttpResponseMessage response = await client.GetAsync(
+            $"/api/github/compare?users={users}"
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CompareWithTokenReturns200()
+    {
+        HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken()
+        );
+
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/github/compare?users=user1,user2"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        ProfileComparisonDto? result =
+            await response.Content.ReadFromJsonAsync<ProfileComparisonDto>();
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Profiles.Count);
+        Assert.Equal("user1", result.Profiles[0].Username);
+        Assert.Equal("user2", result.Profiles[1].Username);
     }
 }
