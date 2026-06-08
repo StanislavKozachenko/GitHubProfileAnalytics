@@ -22,7 +22,9 @@ public class ComparisonService(
     {
         string cacheKey = $"comparison:{username1}:{username2}";
         if (cache.TryGetValue(cacheKey, out ProfileComparisonDto? cached))
+        {
             return cached!;
+        }
 
         GitHubAnalyticsDto first = await analyticsCacheService.GetAnalyticsAsync(
             username1
