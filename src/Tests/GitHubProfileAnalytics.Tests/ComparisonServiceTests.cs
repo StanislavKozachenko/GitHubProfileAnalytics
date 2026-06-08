@@ -1,5 +1,7 @@
 using GitHubProfileAnalytics.DTOs.Analytics;
 using GitHubProfileAnalytics.Services.Analytics;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using NSubstitute;
 
 namespace GitHubProfileAnalytics.Tests;
@@ -28,10 +30,12 @@ public sealed class ComparisonServiceTests
         GitHubAnalyticsDto second
     )
     {
-        IAnalyticsCacheService cache = Substitute.For<IAnalyticsCacheService>();
-        _ = cache.GetAnalyticsAsync("user1").Returns(first);
-        _ = cache.GetAnalyticsAsync("user2").Returns(second);
-        return new ComparisonService(cache);
+        IAnalyticsCacheService analyticsCache = Substitute.For<IAnalyticsCacheService>();
+        _ = analyticsCache.GetAnalyticsAsync("user1").Returns(first);
+        _ = analyticsCache.GetAnalyticsAsync("user2").Returns(second);
+        IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
+        IConfiguration configuration = new ConfigurationBuilder().Build();
+        return new ComparisonService(analyticsCache, memoryCache, configuration);
     }
 
     [Fact]
@@ -108,5 +112,40 @@ public sealed class ComparisonServiceTests
 
         Assert.Equal("user1", result.Profiles[0].Username);
         Assert.Equal("user2", result.Profiles[1].Username);
+    }
+
+    [Fact]
+    public async Task WinnerIsNullWhenScoresAreEqual()
+    {
+        GitHubAnalyticsDto analytics = CreateAnalytics(totalStars: 100, commits: 50);
+        ComparisonService sut = CreateSut(analytics, analytics);
+
+        ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
+
+        Assert.Null(result.Winner);
+    }
+
+    [Fact]
+    public async Task WinnerIsFirstUserWhenFirstDominates()
+    {
+        GitHubAnalyticsDto dominant = CreateAnalytics(totalStars: 1000, commits: 200);
+        GitHubAnalyticsDto weak = CreateAnalytics();
+        ComparisonService sut = CreateSut(dominant, weak);
+
+        ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
+
+        Assert.Equal("user1", result.Winner);
+    }
+
+    [Fact]
+    public async Task WinnerIsSecondUserWhenSecondDominates()
+    {
+        GitHubAnalyticsDto weak = CreateAnalytics();
+        GitHubAnalyticsDto dominant = CreateAnalytics(totalStars: 1000, commits: 200);
+        ComparisonService sut = CreateSut(weak, dominant);
+
+        ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
+
+        Assert.Equal("user2", result.Winner);
     }
 }
