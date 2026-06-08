@@ -113,4 +113,39 @@ public sealed class ComparisonServiceTests
         Assert.Equal("user1", result.Profiles[0].Username);
         Assert.Equal("user2", result.Profiles[1].Username);
     }
+
+    [Fact]
+    public async Task WinnerIsNullWhenScoresAreEqual()
+    {
+        GitHubAnalyticsDto analytics = CreateAnalytics(totalStars: 100, commits: 50);
+        ComparisonService sut = CreateSut(analytics, analytics);
+
+        ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
+
+        Assert.Null(result.Winner);
+    }
+
+    [Fact]
+    public async Task WinnerIsFirstUserWhenFirstDominates()
+    {
+        GitHubAnalyticsDto dominant = CreateAnalytics(totalStars: 1000, commits: 200);
+        GitHubAnalyticsDto weak = CreateAnalytics();
+        ComparisonService sut = CreateSut(dominant, weak);
+
+        ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
+
+        Assert.Equal("user1", result.Winner);
+    }
+
+    [Fact]
+    public async Task WinnerIsSecondUserWhenSecondDominates()
+    {
+        GitHubAnalyticsDto weak = CreateAnalytics();
+        GitHubAnalyticsDto dominant = CreateAnalytics(totalStars: 1000, commits: 200);
+        ComparisonService sut = CreateSut(weak, dominant);
+
+        ProfileComparisonDto result = await sut.CompareAsync("user1", "user2");
+
+        Assert.Equal("user2", result.Winner);
+    }
 }
