@@ -1,9 +1,13 @@
 using GitHubProfileAnalytics.DTOs.Analytics;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace GitHubProfileAnalytics.Services.Analytics;
 
-public class ComparisonService(IAnalyticsCacheService analyticsCacheService)
-    : IComparisonService
+public class ComparisonService(
+    IAnalyticsCacheService analyticsCacheService,
+    IMemoryCache cache,
+    IConfiguration configuration
+) : IComparisonService
 {
     private const double StarsWeight = 0.25;
     private const double FollowerRatioWeight = 0.10;
@@ -16,6 +20,10 @@ public class ComparisonService(IAnalyticsCacheService analyticsCacheService)
         string username2
     )
     {
+        string cacheKey = $"comparison:{username1}:{username2}";
+        if (cache.TryGetValue(cacheKey, out ProfileComparisonDto? cached))
+            return cached!;
+
         GitHubAnalyticsDto first = await analyticsCacheService.GetAnalyticsAsync(
             username1
         );
@@ -23,7 +31,7 @@ public class ComparisonService(IAnalyticsCacheService analyticsCacheService)
             username2
         );
 
-        return new ProfileComparisonDto([
+        ProfileComparisonDto result = new([
             new ComparisonEntryDto(
                 username1,
                 CalculateScore(first, second),
@@ -41,6 +49,10 @@ public class ComparisonService(IAnalyticsCacheService analyticsCacheService)
                 second.ContributionGraph
             ),
         ]);
+
+        int ttlHours = configuration.GetValue("ComparisonCache:TtlHours", 1);
+        _ = cache.Set(cacheKey, result, TimeSpan.FromHours(ttlHours));
+        return result;
     }
 
     private static double CalculateScore(

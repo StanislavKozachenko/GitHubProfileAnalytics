@@ -1,5 +1,7 @@
 using GitHubProfileAnalytics.DTOs.Analytics;
 using GitHubProfileAnalytics.Services.Analytics;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using NSubstitute;
 
 namespace GitHubProfileAnalytics.Tests;
@@ -28,10 +30,12 @@ public sealed class ComparisonServiceTests
         GitHubAnalyticsDto second
     )
     {
-        IAnalyticsCacheService cache = Substitute.For<IAnalyticsCacheService>();
-        _ = cache.GetAnalyticsAsync("user1").Returns(first);
-        _ = cache.GetAnalyticsAsync("user2").Returns(second);
-        return new ComparisonService(cache);
+        IAnalyticsCacheService analyticsCache = Substitute.For<IAnalyticsCacheService>();
+        _ = analyticsCache.GetAnalyticsAsync("user1").Returns(first);
+        _ = analyticsCache.GetAnalyticsAsync("user2").Returns(second);
+        IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
+        IConfiguration configuration = new ConfigurationBuilder().Build();
+        return new ComparisonService(analyticsCache, memoryCache, configuration);
     }
 
     [Fact]
