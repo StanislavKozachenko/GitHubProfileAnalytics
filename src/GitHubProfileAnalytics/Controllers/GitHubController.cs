@@ -49,12 +49,27 @@ public class GitHubController(
         [FromQuery] string users
     )
     {
+        string? userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out Guid userId))
+        {
+            return Unauthorized();
+        }
+
         string[] usernames =
             users?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];
-        return usernames.Length != 2
-            ? (ActionResult<ProfileComparisonDto>)
-                BadRequest("Exactly 2 usernames are required.")
-            : (ActionResult<ProfileComparisonDto>)
-                Ok(await comparisonService.CompareAsync(usernames[0], usernames[1]));
+        if (usernames.Length != 2)
+        {
+            return BadRequest("Exactly 2 usernames are required.");
+        }
+
+        ProfileComparisonDto result = await comparisonService.CompareAsync(
+            usernames[0],
+            usernames[1]
+        );
+
+        await searchHistoryService.AddAsync(userId, usernames[0]);
+        await searchHistoryService.AddAsync(userId, usernames[1]);
+
+        return Ok(result);
     }
 }

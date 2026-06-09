@@ -343,4 +343,21 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifet
         Assert.Equal("user1", result.Profiles[0].Username);
         Assert.Equal("user2", result.Profiles[1].Username);
     }
+
+    [Fact]
+    public async Task CompareRecordsSearchHistoryForBothUsers()
+    {
+        HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken()
+        );
+
+        _ = await client.GetAsync("/api/github/compare?users=user1,user2");
+
+        using IServiceScope scope = _factory.Services.CreateScope();
+        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await db.SearchHistories.AnyAsync(h => h.GitHubUserName == "user1"));
+        Assert.True(await db.SearchHistories.AnyAsync(h => h.GitHubUserName == "user2"));
+    }
 }
