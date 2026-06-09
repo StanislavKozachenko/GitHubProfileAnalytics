@@ -38,6 +38,11 @@ public class GitHubController(
         int limit = 100
     )
     {
+        if (limit <= 0)
+        {
+            return BadRequest("Limit must be greater than 0.");
+        }
+
         string? userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return userIdClaim is null || !Guid.TryParse(userIdClaim, out Guid userId)
             ? Unauthorized()

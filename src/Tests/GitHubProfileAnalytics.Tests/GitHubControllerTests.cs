@@ -238,6 +238,24 @@ public sealed class GitHubControllerTests(DatabaseFixture fixture) : IAsyncLifet
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GetHistoryWithNonPositiveLimitReturns400(int limit)
+    {
+        HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken()
+        );
+
+        HttpResponseMessage response = await client.GetAsync(
+            $"/api/github/history?limit={limit}"
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task GetHistoryReturnsOnlyCurrentUserHistory()
     {
