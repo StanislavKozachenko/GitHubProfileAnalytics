@@ -17,6 +17,9 @@ updates:
       aspnetcore:
         patterns:
           - "Microsoft.AspNetCore.*"
+      openapi:
+        patterns:
+          - "Microsoft.OpenApi*"
       xunit:
         patterns:
           - "xunit*"
