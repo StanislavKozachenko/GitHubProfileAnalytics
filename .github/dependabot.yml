@@ -9,6 +9,10 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    ignore:
+      # ASP.NET Core 10 requires Microsoft.OpenApi < 3.0.0
+      - dependency-name: "Microsoft.OpenApi"
+        update-types: ["version-update:semver-major"]
     groups:
       efcore:
         patterns:
