@@ -25,6 +25,16 @@ updates:
         patterns:
           - "xunit*"
 
+  # Local tools from .config/dotnet-tools.json
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+    allow:
+      - dependency-name: "csharpier"
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
