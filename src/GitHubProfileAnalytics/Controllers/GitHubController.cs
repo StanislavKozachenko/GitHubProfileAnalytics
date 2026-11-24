@@ -60,8 +60,8 @@ public class GitHubController(
             return Unauthorized();
         }
 
-        string[] usernames =
-            users?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];
+        string[] usernames = users?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            ?? [];
         if (usernames.Length != 2)
         {
             return BadRequest("Exactly 2 usernames are required.");

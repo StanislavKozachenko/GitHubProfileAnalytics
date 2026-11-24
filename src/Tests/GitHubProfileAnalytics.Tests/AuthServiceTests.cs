@@ -284,9 +284,8 @@ public sealed class AuthServiceTests(DatabaseFixture fixture) : IAsyncLifetime
         JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(
             result!.AccessToken
         );
-        Assert.Contains(
-            jwt.Claims,
-            c => c.Type == ClaimTypes.NameIdentifier && c.Value == userId
+        Assert.Contains(jwt.Claims, c =>
+            c.Type == ClaimTypes.NameIdentifier && c.Value == userId
         );
     }
 }
