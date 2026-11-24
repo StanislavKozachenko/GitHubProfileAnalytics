@@ -36,11 +36,11 @@ jobs:
       - name: Code style check by dotnet format
         run: dotnet format --verify-no-changes
 
-      - name: Install csharpier
-        run: dotnet tool install -g csharpier
+      - name: Restore local tools
+        run: dotnet tool restore
 
       - name: Code style check by csharpier
-        run: csharpier check .
+        run: dotnet csharpier check .
 
       - name: Test
         run: dotnet test --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
